@@ -18,7 +18,8 @@ const Login = () => {
         password,
         captcha,
       });
-      localStorage.setItem('token', res.data.accessToken);
+      localStorage.setItem('accessToken', res.data.accessToken);
+      localStorage.setItem('refreshToken', res.data.refreshToken);
       alert("Login thành công!");
       navigate('/dashboard');
     } catch (err) {
