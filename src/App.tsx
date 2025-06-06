@@ -1,26 +1,23 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route,Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
 import api from './utils/axios';
 import { AuthProvider } from "./context/AuthProvider";
-import InternManagement from "./pages/InternManagement";
+import InternManagement from "./pages/Interns/InternManagement";
+import DashboardLayout from "./pages/DashboardLayout";
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route
-          path="/dashboard/interns"
-          element={
-
-            <InternManagement />
-
-          }
-        />
-      </Routes>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="interns" element={<InternManagement />} /> 
+      </Route>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+    </Routes>
     </BrowserRouter>
   );
 }
