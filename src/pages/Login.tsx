@@ -1,29 +1,35 @@
-// src/pages/Login.tsx
 import React, { useState } from 'react';
 import axios from 'axios';
-import logo_login from '../assets/login_logo.png'; 
+import logo_login from '../assets/login_logo.png';
 import background_login from '../assets/background_login.png';
 import { useNavigate } from 'react-router-dom';
+import api from '../utils/axios';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [captcha, setCaptcha] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
+
   const handleLogin = async () => {
+    setLoading(true);
+    setError('');
     try {
-      const res = await axios.post('http://localhost:3000/auth/login', {
-        email,
-        password,
-        captcha,
-      });
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('refreshToken', res.data.refreshToken);
-      alert("Login thành công!");
+      const res = await api.post(
+        'http://localhost:3000/auth/login',
+        { email, password, captcha },
+        { withCredentials: true }
+      );
+
+      sessionStorage.setItem('accessToken', res.data.accessToken);
       navigate('/dashboard');
     } catch (err) {
-      alert("Sai tài khoản hoặc mật khẩu");
+      setError('Sai tài khoản, mật khẩu hoặc mã captcha.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,11 +39,12 @@ const Login = () => {
         <div className="flex flex-col items-center mb-6">
           <div className="flex flex-row items-center mb-2">
             <img src={logo_login} alt="Logo" className="h-10 mb-2" />
-          <h1 className="text-xl font-bold text-gray-800">UTTAR PRADESH TIMES</h1>
+            <h1 className="text-xl font-bold text-gray-800 ml-2">UTTAR PRADESH TIMES</h1>
           </div>
-          
-          <p className="text-xl text-blue-800 font-semibold mt-4 text-left justify-left">Welcome Back</p>
+          <p className="text-xl text-blue-800 font-semibold mt-4">Welcome Back</p>
         </div>
+
+        {error && <div className="text-red-500 mb-3 text-sm">{error}</div>}
 
         <input
           type="email"
@@ -61,7 +68,7 @@ const Login = () => {
             onChange={(e) => setCaptcha(e.target.value)}
             className="border p-2 w-full mr-2 rounded"
           />
-          <div className="border p-2 text-lg font-bold bg-gray-100">mkfxc</div> 
+          <div className="border p-2 text-lg font-bold bg-gray-100 select-none">mkfxc</div>
         </div>
         <div className="flex items-center mb-4">
           <input
@@ -75,13 +82,13 @@ const Login = () => {
 
         <button
           onClick={handleLogin}
-          className="bg-blue-800 text-white w-full py-2 rounded hover:bg-blue-900"
+          disabled={loading}
+          className="bg-blue-800 text-white w-full py-2 rounded hover:bg-blue-900 disabled:opacity-50"
         >
-          Log in
+          {loading ? 'Logging in...' : 'Log in'}
         </button>
       </div>
 
-     
       <div className="absolute bottom-0 w-full">
         <img src={background_login} alt="Cityline" className="w-full opacity-80" />
       </div>
