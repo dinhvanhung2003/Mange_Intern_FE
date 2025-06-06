@@ -16,7 +16,7 @@ export default function InternManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
-
+  const [editingIntern, setEditingIntern] = useState<Intern | null>(null);
   const fetchInterns = async () => {
     setLoading(true);
     try {
@@ -33,7 +33,10 @@ export default function InternManagement() {
     fetchInterns();
   }, []);
 
-  const filteredInterns = interns.filter((intern) =>
+  const filteredInterns = interns
+  .slice() 
+  .sort((a, b) => a.id - b.id) 
+  .filter((intern) =>
     `${intern.name}${intern.email}${intern.id}`
       .toLowerCase()
       .includes(search.toLowerCase())
@@ -86,11 +89,38 @@ export default function InternManagement() {
                   <td className="border px-3 py-2">{intern.email}</td>
                   <td className="border px-3 py-2">{intern.role}</td>
                   <td className="border px-3 py-2">{intern.bio || "—"}</td>
-                  <td className="border px-3 py-2 text-center">
-                    <button className="hover:scale-110 transition">
+                  <td className="border px-3 py-2 text-center space-x-3">
+                    {/* Nút sửa */}
+                    <button
+                      className="hover:scale-110 transition"
+                      onClick={() => {
+                        setEditingIntern(intern);
+                        setShowForm(true);
+                      }}
+                    >
                       <img src={edit} alt="Edit" className="w-5 h-5 inline-block" />
                     </button>
+
+                    {/* Nút xóa */}
+                    <button
+                      className="text-red-600 text-sm hover:underline"
+                      onClick={async () => {
+                        const confirmed = window.confirm(`Bạn có chắc muốn xóa intern "${intern.name}"?`);
+                        if (!confirmed) return;
+
+                        try {
+                          await api.delete(`/users/${intern.id}`);
+                          fetchInterns();
+                        } catch (err) {
+                          console.error("Lỗi khi xóa intern:", err);
+                          alert("Xóa thất bại.");
+                        }
+                      }}
+                    >
+                      Xóa
+                    </button>
                   </td>
+
                 </tr>
               ))}
             </tbody>
@@ -101,14 +131,32 @@ export default function InternManagement() {
       {/* Slide-in Form */}
       {showForm && (
         <InternForm
-          onClose={() => setShowForm(false)}
+          initialData={
+            editingIntern
+              ? {
+                name: editingIntern.name,
+                email: editingIntern.email,
+                bio: editingIntern.bio,
+              }
+              : undefined
+          }
+          onClose={() => {
+            setShowForm(false);
+            setEditingIntern(null);
+          }}
           onSubmit={(data) => {
-            api.post("/users", data).then(() => {
+            const request = editingIntern
+              ? api.put(`/users/${editingIntern.id}`, data)
+              : api.post("/users", data);
+
+            request.then(() => {
               fetchInterns();
               setShowForm(false);
+              setEditingIntern(null);
             });
           }}
         />
+
       )}
     </div>
   );

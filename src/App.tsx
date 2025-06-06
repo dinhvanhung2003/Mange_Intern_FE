@@ -4,7 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
 import api from './utils/axios';
 import { AuthProvider } from "./context/AuthProvider";
-import InternManagement from "./pages/Interns/InternManagement";
+import InternManage from "./pages/Interns/InternManage";
 import DashboardLayout from "./pages/DashboardLayout";
 function App() {
   return (
@@ -13,7 +13,7 @@ function App() {
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} />
-        <Route path="interns" element={<InternManagement />} /> 
+        <Route path="interns" element={<InternManage />} /> 
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
