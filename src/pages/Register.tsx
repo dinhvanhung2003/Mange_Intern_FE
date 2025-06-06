@@ -9,51 +9,52 @@ export default function Register() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
- const [emailExists, setEmailExists] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
 
-useEffect(() => {
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setEmailExists(false);
-    return;
-  }
-
-  const checkEmail = async () => {
-    try {
-      const res = await axios.get('http://localhost:3000/auth/check-email', {
-        params: { email },
-      });
-      setEmailExists(res.data.exists); // ✅ gán đúng biến
-    } catch (err) {
-      console.error('Lỗi kiểm tra email:', err);
+  useEffect(() => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailExists(false);
+      return;
     }
-  };
 
-  const debounce = setTimeout(checkEmail, 500);
-  return () => clearTimeout(debounce);
-}, [email]);
+    const checkEmail = async () => {
+      try {
+        const res = await axios.get('http://localhost:3000/auth/check-email', {
+          params: { email },
+        });
+        setEmailExists(res.data.exists); 
+      } catch (err) {
+        console.error('Lỗi kiểm tra email:', err);
+      }
+    };
 
-
-
-
-
-
-
-  
+    const debounce = setTimeout(checkEmail, 500);
+    return () => clearTimeout(debounce);
+  }, [email]);
   const handleRegister = async () => {
     setError('');
-    if (password !== confirm) {
-      return setError('Mật khẩu không khớp');
-    }
-    if (!email || !password || !confirm) {
-      return setError('Vui lòng điền đầy đủ thông tin');
-    }
-    if (emailExists) {
-      return setError('Email đã được sử dụng');
+
+    if (!email) {
+      return setError('Vui lòng điền email');
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return setError('Email không hợp lệ');
     }
+    if (emailExists) {
+      return setError('Email đã được sử dụng');
+    }
+    if (!password) {
+      return setError('Vui lòng điền mật khẩu');
+    }
+    if (!confirm) {
+      return setError('Vui lòng xác nhận mật khẩu');
+    }
+    if (password !== confirm) {
+      return setError('Mật khẩu không khớp');
+    }
+
+
     if (password.length < 6) {
       return setError('Mật khẩu quá ngắn (phải ít nhất 6 ký tự)');
     }

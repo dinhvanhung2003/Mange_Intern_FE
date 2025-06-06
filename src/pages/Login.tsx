@@ -17,18 +17,30 @@ const Login = () => {
   const handleLogin = async () => {
     setLoading(true);
     setError('');
-    if (!email || !password || !captcha) {
-      setError('Vui lòng điền đầy đủ thông tin.');
+    if (!email) {
+      setError('Vui lòng điền email!');
       setLoading(false);
       return;
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Email không hợp lệ.');
       setLoading(false);
       return;
     }
+    if (!password) {
+      setError('Vui lòng điền mật khẩu!');
+      setLoading(false);
+      return;
+    }
+    if (!captcha) {
+      setError('Vui lòng điền mã captcha!');
+      setLoading(false);
+      return;
+    }
+
+
+  
 
     if (password.length < 6) {
       setError('Mật khẩu phải có ít nhất 6 ký tự.');
@@ -50,7 +62,7 @@ const Login = () => {
       sessionStorage.setItem('accessToken', res.data.accessToken);
       navigate('/dashboard');
     } catch (err) {
-      setError('Sai tài khoản, mật khẩu hoặc mã captcha.');
+      setError('Sai tài khoản, mật khẩu');
     } finally {
       setLoading(false);
     }
@@ -73,9 +85,6 @@ const Login = () => {
           </div>
           <p className="text-xl text-blue-800 font-semibold mt-4">Welcome Back</p>
         </div>
-
-        
-
         <input
           type="email"
           placeholder="hannah.green@test.com"
@@ -115,7 +124,7 @@ const Login = () => {
             className="mr-2"
           />
           <label className="text-sm text-gray-700">Remember me on this computer</label>
-          
+
         </div>
 
         <button
@@ -127,14 +136,14 @@ const Login = () => {
         </button>
         <div>
           <p className="text-sm text-center mt-4">
-  Chưa có tài khoản?{' '}
-  <span
-    className="text-blue-600 cursor-pointer hover:underline"
-    onClick={() => navigate('/register')}
-  >
-    Đăng ký ngay
-  </span>
-</p>
+            Chưa có tài khoản?{' '}
+            <span
+              className="text-blue-600 cursor-pointer hover:underline"
+              onClick={() => navigate('/register')}
+            >
+              Đăng ký ngay
+            </span>
+          </p>
         </div>
       </div>
 
