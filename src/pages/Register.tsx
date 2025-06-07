@@ -10,7 +10,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const [emailExists, setEmailExists] = useState(false);
-
+  const [role, setRole] = useState('intern');
   useEffect(() => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailExists(false);
@@ -22,7 +22,7 @@ export default function Register() {
         const res = await axios.get('http://localhost:3000/auth/check-email', {
           params: { email },
         });
-        setEmailExists(res.data.exists); 
+        setEmailExists(res.data.exists);
       } catch (err) {
         console.error('Lỗi kiểm tra email:', err);
       }
@@ -62,7 +62,7 @@ export default function Register() {
       await axios.post('http://localhost:3000/auth/register', {
         email,
         password,
-        // role: 'intern',
+        role,
       });
       alert('Đăng ký thành công!');
       navigate('/login');
@@ -98,6 +98,14 @@ export default function Register() {
           onChange={e => setConfirm(e.target.value)}
           className="border p-2 rounded w-full mb-4 outline-none"
         />
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="border p-2 rounded w-full mb-4 outline-none"
+        >
+          <option value="intern">Intern</option>
+          <option value="mentor">Mentor</option>
+        </select>
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
         <button
