@@ -7,7 +7,7 @@ import { jwtDecode } from "jwt-decode";
 
 interface TokenPayload {
   email: string;
-  role: string;
+  type: string;
   exp: number;
   iat: number;
 }
@@ -22,7 +22,7 @@ export default function DashboardLayout() {
     if (!token) return "";
     try {
       const decoded = jwtDecode<TokenPayload>(token);
-      return decoded.role || "";
+      return decoded.type || "";
     } catch (err) {
       console.error("Token decode error:", err);
       return "";
@@ -89,10 +89,13 @@ export default function DashboardLayout() {
           </Link>
 
           {role === "admin" && (
-            <a className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-              <img src={icon_dashboard} alt="User management" />
-              <p>User management</p>
-            </a>
+            <Link
+              to="/dashboard/users"
+              className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
+            >
+              <img src={icon_dashboard} alt="Intern management" />
+              <p>User Management</p>
+            </Link>
           )}
 
           {role === "intern" && (

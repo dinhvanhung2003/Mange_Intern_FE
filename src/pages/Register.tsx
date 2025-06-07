@@ -62,7 +62,7 @@ export default function Register() {
       await axios.post('http://localhost:3000/auth/register', {
         email,
         password,
-        role,
+        type: role,
       });
       alert('Đăng ký thành công!');
       navigate('/login');

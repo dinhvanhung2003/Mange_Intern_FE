@@ -6,6 +6,7 @@ import api from './utils/axios';
 import { AuthProvider } from "./context/AuthProvider";
 import InternManage from "./pages/Interns/InternManage";
 import DashboardLayout from "./pages/DashboardLayout";
+import UserMange from "./pages/UsersMange/UserMange";
 function App() {
   return (
     <BrowserRouter>
@@ -14,6 +15,7 @@ function App() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="interns" element={<InternManage />} /> 
+        <Route path="users" element={<UserMange/>}/>
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
