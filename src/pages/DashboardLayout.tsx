@@ -98,14 +98,25 @@ export default function DashboardLayout() {
           )}
 
           {role === "intern" && (
-            <Link
-              to="/dashboard/interns/profile"
-              className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-            >
-              <img src={icon_dashboard} alt="Intern management" />
-              <p>Intern Profile</p>
-            </Link>
+            <>
+              <Link
+                to="/dashboard/interns/profile"
+                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
+              >
+                <img src={icon_dashboard} alt="Intern management" />
+                <p>Intern Profile</p>
+              </Link>
+
+              <Link
+                to="/dashboard/interns/my-tasks"
+                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
+              >
+                <img src={icon_dashboard} alt="My Tasks" />
+                <p>My Tasks</p>
+              </Link>
+            </>
           )}
+
 
           {role === "mentor" && (
             <Link

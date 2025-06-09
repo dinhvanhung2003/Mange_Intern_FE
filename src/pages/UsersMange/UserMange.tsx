@@ -19,7 +19,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useEffect, useState } from 'react';
 import api from '../../utils/axios';
-import InternForm from '../Interns/InternForm';
+import UserForm from './UserForm';
 
 interface User {
   id: number;
@@ -38,10 +38,16 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'intern' | 'mentor'>('intern');
+  const [tab, setTab] = useState<'intern' | 'mentor' | 'assignment'>('intern');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showForm, setShowForm] = useState(false);
-
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignForm, setAssignForm] = useState({
+    internId: '',
+    mentorId: '',
+    startDate: '',
+    endDate: '',
+  });
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -75,7 +81,21 @@ export default function UserManagement() {
       console.error('Lỗi xoá:', err);
     }
   };
+  const fetchAssignments = async () => {
+    const res = await api.get('/admin/assignments');
+    setAssignments(res.data);
+  };
+  const resolvedType: 'intern' | 'mentor' | undefined =
+    editingUser?.type === 'intern' || editingUser?.type === 'mentor'
+      ? editingUser.type
+      : tab === 'intern' || tab === 'mentor'
+        ? tab
+        : undefined;
 
+  useEffect(() => {
+    fetchUsers();
+    fetchAssignments();
+  }, []);
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -84,6 +104,7 @@ export default function UserManagement() {
           <Tabs value={tab} onChange={(e, v) => setTab(v)} textColor="primary">
             <Tab label="Interns" value="intern" />
             <Tab label="Mentors" value="mentor" />
+            <Tab label="Assignments" value="assignment" />
           </Tabs>
         </Box>
         <Box display="flex" gap={2}>
@@ -104,61 +125,177 @@ export default function UserManagement() {
         <Box textAlign="center" py={4}>
           <CircularProgress />
         </Box>
-      ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              {tab === 'intern' ? (
-                <>
-                  <TableCell>School</TableCell>
-                  <TableCell>Major</TableCell>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>LinkedIn</TableCell>
-                </>
-              ) : (
-                <TableCell>Expertise</TableCell>
-              )}
-              <TableCell align="center">Action</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.id}</TableCell>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
+      ) :
+        (tab === 'intern' || tab === 'mentor') && (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Email</TableCell>
                 {tab === 'intern' ? (
                   <>
-                    <TableCell>{user.school || '—'}</TableCell>
-                    <TableCell>{user.major || '—'}</TableCell>
-                    <TableCell>{user.phone || '—'}</TableCell>
-                    <TableCell>{user.linkedinLink || '—'}</TableCell>
+                    <TableCell>School</TableCell>
+                    <TableCell>Major</TableCell>
+                    <TableCell>Phone</TableCell>
+                    <TableCell>LinkedIn</TableCell>
                   </>
                 ) : (
-                  <TableCell>{user.expertise || '—'}</TableCell>
+                  <TableCell>Expertise</TableCell>
                 )}
-                <TableCell align="center">
-                  <IconButton onClick={() => { setEditingUser(user); setShowForm(true); }}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton color="error" onClick={() => handleDelete(user.id, user.name)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
+                <TableCell align="center">Action</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+            </TableHead>
+            <TableBody>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.id}</TableCell>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  {tab === 'intern' ? (
+                    <>
+                      <TableCell>{user.school || '—'}</TableCell>
+                      <TableCell>{user.major || '—'}</TableCell>
+                      <TableCell>{user.phone || '—'}</TableCell>
+                      <TableCell>{user.linkedinLink || '—'}</TableCell>
+                    </>
+                  ) : (
+                    <TableCell>{user.expertise || '—'}</TableCell>
+                  )}
+                  <TableCell align="center">
+                    <IconButton onClick={() => { setEditingUser(user); setShowForm(true); }}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton color="error" onClick={() => handleDelete(user.id, user.name)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      {tab === 'assignment' && (
+        <>
+          {/* Form gán */}
+          <Box mb={2} display="flex" gap={2} flexWrap="wrap">
+            <TextField
+              select
+              label="Intern"
+              value={assignForm.internId}
+              onChange={(e) => setAssignForm({ ...assignForm, internId: e.target.value })}
+              SelectProps={{ native: true }}
+            >
+              <option value="">-- Chọn intern --</option>
+              {users.filter(u => u.type === 'intern').map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </TextField>
 
+            <TextField
+              select
+              label="Mentor"
+              value={assignForm.mentorId}
+              onChange={(e) => setAssignForm({ ...assignForm, mentorId: e.target.value })}
+              SelectProps={{ native: true }}
+            >
+              <option value="">-- Chọn mentor --</option>
+              {users.filter(u => u.type === 'mentor').map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </TextField>
+
+            <TextField
+              type="date"
+              label="Start Date"
+              InputLabelProps={{ shrink: true }}
+              value={assignForm.startDate}
+              onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })}
+            />
+
+            <TextField
+              type="date"
+              label="End Date"
+              InputLabelProps={{ shrink: true }}
+              value={assignForm.endDate}
+              onChange={(e) => setAssignForm({ ...assignForm, endDate: e.target.value })}
+            />
+
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  await api.post('/admin/assignments', assignForm);
+                  fetchAssignments();
+                  alert('Gán thành công!');
+                  setAssignForm({ internId: '', mentorId: '', startDate: '', endDate: '' });
+                } catch (err: any) {
+                  console.error('Lỗi khi gán:', err.response?.data || err.message);
+                  alert('Gán thất bại!');
+                }
+              }}
+            >
+              Gán Intern
+            </Button>
+          </Box>
+
+          {/* Danh sách assignment */}
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Intern</TableCell>
+                <TableCell>Mentor</TableCell>
+                <TableCell>Start</TableCell>
+                <TableCell>End</TableCell>
+                <TableCell align="center">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {assignments.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell>{a.intern?.name}</TableCell>
+                  <TableCell>{a.mentor?.name}</TableCell>
+                  <TableCell>{a.startDate}</TableCell>
+                  <TableCell>{a.endDate}</TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      color="error"
+                      onClick={async () => {
+                        if (window.confirm('Xóa phân công này?')) {
+                          await api.delete(`/admin/assignments/${a.id}`);
+                          fetchAssignments();
+                        }
+
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
+      )}
       <Dialog open={showForm} onClose={() => { setShowForm(false); setEditingUser(null); }} maxWidth="sm" fullWidth>
         <DialogTitle>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}</DialogTitle>
         <DialogContent>
-          <InternForm
-            initialData={editingUser || undefined}
+          <UserForm
+            type={resolvedType}
+            initialData={
+              editingUser
+                ? {
+                  name: editingUser.name,
+                  email: editingUser.email,
+                  bio: editingUser.bio || '',
+                  school: editingUser.school || '',
+                  major: editingUser.major || '',
+                  phone: editingUser.phone || '',
+                  linkedinLink: editingUser.linkedinLink || '',
+                  expertise: editingUser.expertise || '',
+                }
+                : undefined
+            }
             onClose={() => {
               setShowForm(false);
               setEditingUser(null);
@@ -166,7 +303,7 @@ export default function UserManagement() {
             onSubmit={(data) => {
               const req = editingUser
                 ? api.put(`/users/${editingUser.id}`, data)
-                : api.post('/users', data);
+                : api.post('/users', { ...data, type: resolvedType });
 
               req.then(() => {
                 fetchUsers();
@@ -175,6 +312,8 @@ export default function UserManagement() {
               });
             }}
           />
+
+
         </DialogContent>
       </Dialog>
     </Box>

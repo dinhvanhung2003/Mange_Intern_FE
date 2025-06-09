@@ -1,163 +1,181 @@
-import { useEffect, useState } from "react";
-import api from "../../utils/axios";
-import edit from "../../assets/edit.png";
-import InternForm from "./InternForm";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Collapse,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import api from '../../utils/axios';
 
-interface Intern {
-  id: number;
-  email: string;
-  name: string;
-  role: string;
-  bio?: string;
-}
+export default function MentorInterns() {
+  const [interns, setInterns] = useState<any[]>([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedIntern, setSelectedIntern] = useState<any | null>(null);
+  const [task, setTask] = useState({ title: '', description: '', dueDate: '' });
+  const [tasksByIntern, setTasksByIntern] = useState<Record<number, any[]>>({});
+  const [expandedIntern, setExpandedIntern] = useState<number | null>(null);
 
-export default function InternManagement() {
-  const [interns, setInterns] = useState<Intern[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingIntern, setEditingIntern] = useState<Intern | null>(null);
-  const fetchInterns = async () => {
-    setLoading(true);
+  useEffect(() => {
+    api.get('/mentor/interns')
+      .then((res) => setInterns(res.data))
+      .catch((err) => console.error('Lỗi tải interns:', err));
+  }, []);
+
+  const fetchTasksForIntern = async (internId: number) => {
     try {
-      const res = await api.get("/users/interns");
-      setInterns(res.data);
+      const res = await api.get(`/mentor/interns/${internId}/tasks`);
+      setTasksByIntern((prev) => ({ ...prev, [internId]: res.data }));
     } catch (err) {
-      console.error("Lỗi khi tải interns:", err);
-    } finally {
-      setLoading(false);
+      console.error('Lỗi tải task của intern:', err);
     }
   };
 
-  useEffect(() => {
-    fetchInterns();
-  }, []);
+  const handleAssignTask = async () => {
+    try {
+      await api.post('/mentor/tasks', {
+        ...task,
+        assignedTo: selectedIntern.id,
+      });
+      alert('Đã giao task thành công!');
+      setOpenDialog(false);
+      setTask({ title: '', description: '', dueDate: '' });
 
-  const filteredInterns = interns
-  .slice() 
-  .sort((a, b) => a.id - b.id) 
-  .filter((intern) =>
-    `${intern.name}${intern.email}${intern.id}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+      // Load lại danh sách task nếu đang mở intern này
+      if (expandedIntern === selectedIntern.id) {
+        fetchTasksForIntern(selectedIntern.id);
+      }
+    } catch (err) {
+      console.error('Lỗi giao task:', err);
+      alert('Giao task thất bại!');
+    }
+  };
 
   return (
-    <div className="p-6 bg-white rounded shadow relative">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
-        <h2 className="text-xl font-semibold">Intern User List</h2>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Search by Text or ID"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="border px-3 py-1 rounded outline-none w-full sm:w-auto"
-          />
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 w-full sm:w-auto"
-          >
-            + New Intern
-          </button>
-        </div>
-      </div>
+    <Box p={3}>
+      <Typography variant="h5" gutterBottom>Danh sách Intern đang hướng dẫn</Typography>
 
+      <Box display="flex" gap={2} flexWrap="wrap">
+        {interns.map((intern) => (
+          <Card key={intern.id} sx={{ width: 350 }}>
+            <CardContent>
+              <Typography variant="h6">{intern.name}</Typography>
+              <Typography variant="body2">{intern.email}</Typography>
+              <Typography variant="body2" gutterBottom>{intern.school || 'Chưa có trường'}</Typography>
 
-      {/* Table */}
-      {loading ? (
-        <p>Đang tải danh sách interns...</p>
-      ) : (
-        <div className="overflow-auto">
-          <table className="min-w-full border text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border px-3 py-2 text-left">ID</th>
-                <th className="border px-3 py-2 text-left">User</th>
-                <th className="border px-3 py-2 text-left">Email</th>
-                <th className="border px-3 py-2 text-left">Role</th>
-                <th className="border px-3 py-2 text-left">Bio</th>
-                <th className="border px-3 py-2 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredInterns.map((intern) => (
-                <tr key={intern.id} className="hover:bg-gray-50">
-                  <td className="border px-3 py-2">{intern.id}</td>
-                  <td className="border px-3 py-2">{intern.name}</td>
-                  <td className="border px-3 py-2">{intern.email}</td>
-                  <td className="border px-3 py-2">{intern.role}</td>
-                  <td className="border px-3 py-2">{intern.bio || "—"}</td>
-                  <td className="border px-3 py-2 text-center space-x-3">
-                    {/* Nút sửa */}
-                    <button
-                      className="hover:scale-110 transition"
-                      onClick={() => {
-                        setEditingIntern(intern);
-                        setShowForm(true);
-                      }}
-                    >
-                      <img src={edit} alt="Edit" className="w-5 h-5 inline-block" />
-                    </button>
+              <Box display="flex" gap={1}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setSelectedIntern(intern);
+                    setOpenDialog(true);
+                  }}
+                >
+                  Giao task
+                </Button>
 
-                    {/* Nút xóa */}
-                    <button
-                      className="text-red-600 text-sm hover:underline"
-                      onClick={async () => {
-                        const confirmed = window.confirm(`Bạn có chắc muốn xóa intern "${intern.name}"?`);
-                        if (!confirmed) return;
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => {
+                    const shouldExpand = expandedIntern !== intern.id;
+                    setExpandedIntern(shouldExpand ? intern.id : null);
+                    if (shouldExpand && !tasksByIntern[intern.id]) {
+                      fetchTasksForIntern(intern.id);
+                    }
+                  }}
+                >
+                  {expandedIntern === intern.id ? 'Ẩn task' : 'Xem task'}
+                </Button>
+              </Box>
 
-                        try {
-                          await api.delete(`/users/${intern.id}`);
-                          fetchInterns();
-                        } catch (err) {
-                          console.error("Lỗi khi xóa intern:", err);
-                          alert("Xóa thất bại.");
+              <Collapse in={expandedIntern === intern.id}>
+                <List dense sx={{ mt: 1 }}>
+                  {(tasksByIntern[intern.id] || []).map((task) => (
+                    <div key={task.id}>
+                      <ListItem
+                        secondaryAction={
+                          task.status === 'in_progress' && (
+                            <Button
+                              size="small"
+                              color="success"
+                              onClick={async () => {
+                                try {
+                                  await api.patch(`/mentor/tasks/${task.id}/complete`);
+                                  fetchTasksForIntern(intern.id); // cập nhật lại danh sách
+                                } catch (err) {
+                                  console.log('Lỗi hoàn thành task:', err);
+                                  alert('Lỗi khi hoàn thành task!');
+                                }
+                              }}
+                            >
+                              Hoàn thành
+                            </Button>
+                          )
                         }
-                      }}
-                    >
-                      Xóa
-                    </button>
-                  </td>
+                      >
+                        <ListItemText
+                          primary={task.title}
+                          secondary={`Hạn: ${task.dueDate} | Trạng thái: ${task.status}`}
+                        />
+                      </ListItem>
+                      <Divider />
+                    </div>
+                  ))}
 
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  {tasksByIntern[intern.id]?.length === 0 && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>Chưa có task nào.</Typography>
+                  )}
+                </List>
+              </Collapse>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
 
-      {/* Slide-in Form */}
-      {showForm && (
-        <InternForm
-          initialData={
-            editingIntern
-              ? {
-                name: editingIntern.name,
-                email: editingIntern.email,
-                bio: editingIntern.bio,
-              }
-              : undefined
-          }
-          onClose={() => {
-            setShowForm(false);
-            setEditingIntern(null);
-          }}
-          onSubmit={(data) => {
-            const request = editingIntern
-              ? api.put(`/users/${editingIntern.id}`, data)
-              : api.post("/users", data);
-
-            request.then(() => {
-              fetchInterns();
-              setShowForm(false);
-              setEditingIntern(null);
-            });
-          }}
-        />
-
-      )}
-    </div>
+      {/* Dialog giao task */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Giao task cho {selectedIntern?.name}</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <TextField
+              label="Tiêu đề"
+              value={task.title}
+              onChange={(e) => setTask({ ...task, title: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Mô tả"
+              value={task.description}
+              onChange={(e) => setTask({ ...task, description: e.target.value })}
+              multiline
+              rows={3}
+              fullWidth
+            />
+            <TextField
+              label="Hạn hoàn thành"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={task.dueDate}
+              onChange={(e) => setTask({ ...task, dueDate: e.target.value })}
+              fullWidth
+            />
+            <Button variant="contained" onClick={handleAssignTask}>
+              Giao Task
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 }

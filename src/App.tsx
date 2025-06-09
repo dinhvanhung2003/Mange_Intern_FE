@@ -8,6 +8,7 @@ import InternManage from "./pages/Interns/InternManage";
 import DashboardLayout from "./pages/DashboardLayout";
 import UserMange from "./pages/UsersMange/UserMange";
 import InternProfileForm from "./pages/Profiles/InternProfileForm";
+import MyTask from "./pages/Interns/MyTask";
 function App() {
   return (
     <BrowserRouter>
@@ -18,6 +19,7 @@ function App() {
         <Route path="interns" element={<InternManage />} /> 
         <Route path="users" element={<UserMange/>}/>
         <Route path="interns/profile" element={<InternProfileForm />} />
+<Route path="interns/my-tasks" element={<MyTask />} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
