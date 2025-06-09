@@ -1,4 +1,19 @@
-import { useState, useEffect } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
+
+type UserType = "intern" | "mentor";
+
+interface FormData {
+  name: string;
+  email: string;
+  password?: string;
+  bio?: string;
+  school?: string;
+  major?: string;
+  phone?: string;
+  linkedinLink?: string;
+  expertise?: string;
+}
 
 export default function UserForm({
   onClose,
@@ -8,68 +23,40 @@ export default function UserForm({
 }: {
   onClose: () => void;
   onSubmit: (data: any) => void;
-  initialData?: {
-    name: string;
-    email: string;
-    bio?: string;
-    school?: string;
-    major?: string;
-    phone?: string;
-    linkedinLink?: string;
-    expertise?: string;
-  };
-  type?: "intern" | "mentor";
+  initialData?: FormData;
+  type?: UserType;
 }) {
-  const [form, setForm] = useState<{
-    name: string;
-    email: string;
-    bio: string;
-    password?: string;
-    school?: string;
-    major?: string;
-    phone?: string;
-    linkedinLink?: string;
-    expertise?: string;
-  }>({
-    name: '',
-    email: '',
-    bio: '',
+  console.log("re-render");
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormData>({
+    defaultValues: {
+      name: initialData?.name || "",
+      email: initialData?.email || "",
+      password: "",
+      bio: initialData?.bio || "",
+      school: initialData?.school || "",
+      major: initialData?.major || "",
+      phone: initialData?.phone || "",
+      linkedinLink: initialData?.linkedinLink || "",
+      expertise: initialData?.expertise || "",
+    },
   });
 
-  useEffect(() => {
+
+  React.useEffect(() => {
     if (initialData) {
-      setForm({
-        name: initialData.name || "",
-        email: initialData.email || "",
-        bio: initialData.bio || "",
-        school: initialData.school || "",
-        major: initialData.major || "",
-        phone: initialData.phone || "",
-        linkedinLink: initialData.linkedinLink || "",
-        expertise: initialData.expertise || "",
-        password: "", 
-      });
+      reset({ ...initialData, password: "" });
     }
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = () => {
-    if (!form.name || !form.email || (!initialData && !form.password)) {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc.");
-      return;
-    }
-
-    const dataToSubmit = { ...form };
-    if (initialData) {
-      delete dataToSubmit.password;
-    }
-
-    onSubmit(dataToSubmit);
+  const onFormSubmit = (data: FormData) => {
+    if (initialData) delete data.password; 
+    onSubmit(data);
     onClose();
   };
 
@@ -84,142 +71,67 @@ export default function UserForm({
         <button onClick={onClose}>✕</button>
       </div>
 
-      <div className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit(onFormSubmit)}>
         <div>
-          <label htmlFor="name" className="text-sm text-gray-700 mb-1 block">
-            Full Name *
-          </label>
+          <label className="text-sm text-gray-700 block">Full Name *</label>
           <input
-            id="name"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
+            {...register("name", { required: true })}
             className="border p-2 rounded w-full outline-none"
           />
+          {errors.name && <p className="text-red-500 text-sm">Bắt buộc</p>}
         </div>
 
         <div>
-          <label htmlFor="email" className="text-sm text-gray-700 mb-1 block">
-            Email Address *
-          </label>
+          <label className="text-sm text-gray-700 block">Email *</label>
           <input
-            id="email"
-            name="email"
             type="email"
-            value={form.email}
-            onChange={handleChange}
+            {...register("email", { required: true })}
             className="border p-2 rounded w-full outline-none"
           />
+          {errors.email && <p className="text-red-500 text-sm">Bắt buộc</p>}
         </div>
 
         {!initialData && (
           <div>
-            <label htmlFor="password" className="text-sm text-gray-700 mb-1 block">
-              Password *
-            </label>
+            <label className="text-sm text-gray-700 block">Password *</label>
             <input
-              id="password"
-              name="password"
               type="password"
-              value={form.password}
-              onChange={handleChange}
+              {...register("password", { required: true })}
               className="border p-2 rounded w-full outline-none"
             />
+            {errors.password && <p className="text-red-500 text-sm">Bắt buộc</p>}
           </div>
         )}
 
         <div>
-          <label htmlFor="bio" className="text-sm text-gray-700 mb-1 block">
-            Profile Summary
-          </label>
+          <label className="text-sm text-gray-700 block">Profile Summary</label>
           <textarea
-            id="bio"
-            name="bio"
-            value={form.bio}
-            onChange={handleChange}
-            rows={4}
+            {...register("bio")}
+            rows={3}
             className="border p-2 rounded w-full outline-none resize-none"
           />
         </div>
 
         {type === "intern" && (
           <>
-            <div>
-              <label htmlFor="school" className="text-sm text-gray-700 mb-1 block">
-                School
-              </label>
-              <input
-                id="school"
-                name="school"
-                value={form.school || ""}
-                onChange={handleChange}
-                className="border p-2 rounded w-full outline-none"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="major" className="text-sm text-gray-700 mb-1 block">
-                Major
-              </label>
-              <input
-                id="major"
-                name="major"
-                value={form.major || ""}
-                onChange={handleChange}
-                className="border p-2 rounded w-full outline-none"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="text-sm text-gray-700 mb-1 block">
-                Phone
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                value={form.phone || ""}
-                onChange={handleChange}
-                className="border p-2 rounded w-full outline-none"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="linkedinLink" className="text-sm text-gray-700 mb-1 block">
-                LinkedIn
-              </label>
-              <input
-                id="linkedinLink"
-                name="linkedinLink"
-                value={form.linkedinLink || ""}
-                onChange={handleChange}
-                className="border p-2 rounded w-full outline-none"
-              />
-            </div>
+            <input {...register("school")} placeholder="School" className="border p-2 rounded w-full" />
+            <input {...register("major")} placeholder="Major" className="border p-2 rounded w-full" />
+            <input {...register("phone")} placeholder="Phone" className="border p-2 rounded w-full" />
+            <input {...register("linkedinLink")} placeholder="LinkedIn" className="border p-2 rounded w-full" />
           </>
         )}
 
         {type === "mentor" && (
-          <div>
-            <label htmlFor="expertise" className="text-sm text-gray-700 mb-1 block">
-              Expertise
-            </label>
-            <input
-              id="expertise"
-              name="expertise"
-              value={form.expertise || ""}
-              onChange={handleChange}
-              className="border p-2 rounded w-full outline-none"
-            />
-          </div>
+          <input {...register("expertise")} placeholder="Expertise" className="border p-2 rounded w-full" />
         )}
-      </div>
 
-      <button
-        onClick={handleSubmit}
-        className="mt-6 bg-blue-900 text-white w-full py-2 rounded hover:bg-blue-800"
-      >
-        {initialData ? "Update" : "Submit"}
-      </button>
+        <button
+          type="submit"
+          className="mt-6 bg-blue-900 text-white w-full py-2 rounded hover:bg-blue-800"
+        >
+          {initialData ? "Update" : "Submit"}
+        </button>
+      </form>
     </div>
   );
 }

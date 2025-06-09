@@ -14,18 +14,24 @@ import {
   Divider,
   Collapse,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../utils/axios';
 
 export default function MentorInterns() {
+  console.log("re-render");
   const [interns, setInterns] = useState<any[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedIntern, setSelectedIntern] = useState<any | null>(null);
-  const [task, setTask] = useState({ title: '', description: '', dueDate: '' });
   const [tasksByIntern, setTasksByIntern] = useState<Record<number, any[]>>({});
   const [expandedIntern, setExpandedIntern] = useState<number | null>(null);
 
+  const titleRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+
+
   useEffect(() => {
+    console.log("re-render");
     api.get('/mentor/interns')
       .then((res) => setInterns(res.data))
       .catch((err) => console.error('Lỗi tải interns:', err));
@@ -41,16 +47,28 @@ export default function MentorInterns() {
   };
 
   const handleAssignTask = async () => {
+    const taskData = {
+      title: titleRef.current?.value || '',
+      description: descRef.current?.value || '',
+      dueDate: dateRef.current?.value || '',
+      assignedTo: selectedIntern.id,
+    };
+
+    if (!taskData.title || !taskData.dueDate) {
+      alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
+      return;
+    }
+
     try {
-      await api.post('/mentor/tasks', {
-        ...task,
-        assignedTo: selectedIntern.id,
-      });
+      await api.post('/mentor/tasks', taskData);
       alert('Đã giao task thành công!');
       setOpenDialog(false);
-      setTask({ title: '', description: '', dueDate: '' });
 
-      // Load lại danh sách task nếu đang mở intern này
+      
+      if (titleRef.current) titleRef.current.value = '';
+      if (descRef.current) descRef.current.value = '';
+      if (dateRef.current) dateRef.current.value = '';
+
       if (expandedIntern === selectedIntern.id) {
         fetchTasksForIntern(selectedIntern.id);
       }
@@ -112,7 +130,7 @@ export default function MentorInterns() {
                               onClick={async () => {
                                 try {
                                   await api.patch(`/mentor/tasks/${task.id}/complete`);
-                                  fetchTasksForIntern(intern.id); // cập nhật lại danh sách
+                                  fetchTasksForIntern(intern.id);
                                 } catch (err) {
                                   console.log('Lỗi hoàn thành task:', err);
                                   alert('Lỗi khi hoàn thành task!');
@@ -144,38 +162,36 @@ export default function MentorInterns() {
       </Box>
 
       {/* Dialog giao task */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Giao task cho {selectedIntern?.name}</DialogTitle>
-        <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <TextField
-              label="Tiêu đề"
-              value={task.title}
-              onChange={(e) => setTask({ ...task, title: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Mô tả"
-              value={task.description}
-              onChange={(e) => setTask({ ...task, description: e.target.value })}
-              multiline
-              rows={3}
-              fullWidth
-            />
-            <TextField
-              label="Hạn hoàn thành"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              value={task.dueDate}
-              onChange={(e) => setTask({ ...task, dueDate: e.target.value })}
-              fullWidth
-            />
-            <Button variant="contained" onClick={handleAssignTask}>
-              Giao Task
-            </Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
+     <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+  <DialogTitle>Giao task cho {selectedIntern?.name}</DialogTitle>
+  <DialogContent>
+    <Box display="flex" flexDirection="column" gap={2} mt={1}>
+      <TextField
+        label="Tiêu đề"
+        inputRef={titleRef}
+        fullWidth
+      />
+      <TextField
+        label="Mô tả"
+        inputRef={descRef}
+        multiline
+        rows={3}
+        fullWidth
+      />
+      <TextField
+        label="Hạn hoàn thành"
+        type="date"
+        InputLabelProps={{ shrink: true }}
+        inputRef={dateRef}
+        fullWidth
+      />
+      <Button variant="contained" onClick={handleAssignTask}>
+        Giao Task
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
+
     </Box>
   );
 }
