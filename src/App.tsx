@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthProvider";
 import InternManage from "./pages/Interns/InternManage";
 import DashboardLayout from "./pages/DashboardLayout";
 import UserMange from "./pages/UsersMange/UserMange";
+import InternProfileForm from "./pages/Profiles/InternProfileForm";
 function App() {
   return (
     <BrowserRouter>
@@ -16,6 +17,7 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="interns" element={<InternManage />} /> 
         <Route path="users" element={<UserMange/>}/>
+        <Route path="interns/profile" element={<InternProfileForm />} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

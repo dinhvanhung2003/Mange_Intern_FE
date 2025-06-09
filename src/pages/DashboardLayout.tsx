@@ -69,9 +69,8 @@ export default function DashboardLayout() {
         </button>
       </div>
       <div
-        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
-        }`}
+        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
+          }`}
       >
         <div className="text-xl font-bold flex">
           <img src={logo} className="w-10 inline-block mr-2" alt="Logo" />
@@ -99,10 +98,13 @@ export default function DashboardLayout() {
           )}
 
           {role === "intern" && (
-            <a className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-              <img src={icon_dashboard} alt="Profile" />
-              <p>Profile</p>
-            </a>
+            <Link
+              to="/dashboard/interns/profile"
+              className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
+            >
+              <img src={icon_dashboard} alt="Intern management" />
+              <p>Intern Profile</p>
+            </Link>
           )}
 
           {role === "mentor" && (
@@ -120,14 +122,14 @@ export default function DashboardLayout() {
           <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full" />
         </div>
         <div className="text-center">
-             <button
-          onClick={handleLogout}
-          className="mt-auto text-sm text-gray-300 hover:text-red-400"
-        >
-          Logout
-        </button>
+          <button
+            onClick={handleLogout}
+            className="mt-auto text-sm text-gray-300 hover:text-red-400"
+          >
+            Logout
+          </button>
         </div>
-       
+
       </div>
       <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
         <Outlet />
