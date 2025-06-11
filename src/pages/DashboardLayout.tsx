@@ -88,14 +88,25 @@ export default function DashboardLayout() {
           </Link>
 
           {role === "admin" && (
-            <Link
-              to="/dashboard/users"
-              className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-            >
-              <img src={icon_dashboard} alt="Intern management" />
-              <p>User Management</p>
-            </Link>
+            <>
+              <Link
+                to="/dashboard/users"
+                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
+              >
+                <img src={icon_dashboard} alt="User Management" />
+                <p>User Management</p>
+              </Link>
+
+              <Link
+                to="/dashboard/admin/tasks"
+                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
+              >
+                <img src={icon_dashboard} alt="Task Management" />
+                <p>Task Management</p>
+              </Link>
+            </>
           )}
+
 
           {role === "intern" && (
             <>

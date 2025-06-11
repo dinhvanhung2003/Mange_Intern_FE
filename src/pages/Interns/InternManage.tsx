@@ -64,7 +64,7 @@ export default function MentorInterns() {
       alert('Đã giao task thành công!');
       setOpenDialog(false);
 
-      
+
       if (titleRef.current) titleRef.current.value = '';
       if (descRef.current) descRef.current.value = '';
       if (dateRef.current) dateRef.current.value = '';
@@ -162,35 +162,35 @@ export default function MentorInterns() {
       </Box>
 
       {/* Dialog giao task */}
-     <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-  <DialogTitle>Giao task cho {selectedIntern?.name}</DialogTitle>
-  <DialogContent>
-    <Box display="flex" flexDirection="column" gap={2} mt={1}>
-      <TextField
-        label="Tiêu đề"
-        inputRef={titleRef}
-        fullWidth
-      />
-      <TextField
-        label="Mô tả"
-        inputRef={descRef}
-        multiline
-        rows={3}
-        fullWidth
-      />
-      <TextField
-        label="Hạn hoàn thành"
-        type="date"
-        InputLabelProps={{ shrink: true }}
-        inputRef={dateRef}
-        fullWidth
-      />
-      <Button variant="contained" onClick={handleAssignTask}>
-        Giao Task
-      </Button>
-    </Box>
-  </DialogContent>
-</Dialog>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Giao task cho {selectedIntern?.name}</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <TextField
+              label="Tiêu đề"
+              inputRef={titleRef}
+              fullWidth
+            />
+            <TextField
+              label="Mô tả"
+              inputRef={descRef}
+              multiline
+              rows={3}
+              fullWidth
+            />
+            <TextField
+              label="Hạn hoàn thành"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              inputRef={dateRef}
+              fullWidth
+            />
+            <Button variant="contained" onClick={handleAssignTask}>
+              Giao Task
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
     </Box>
   );

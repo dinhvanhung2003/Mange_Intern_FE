@@ -22,7 +22,7 @@ const Login = () => {
       setLoading(false);
       return;
     }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Email không hợp lệ.');
       setLoading(false);
@@ -40,7 +40,7 @@ const Login = () => {
     }
 
 
-  
+
 
     if (password.length < 6) {
       setError('Mật khẩu phải có ít nhất 6 ký tự.');
