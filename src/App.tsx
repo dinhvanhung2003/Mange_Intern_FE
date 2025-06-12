@@ -10,6 +10,8 @@ import UserMange from "./pages/UsersMange/UserMange";
 import InternProfileForm from "./pages/Profiles/InternProfileForm";
 import MyTask from "./pages/Interns/MyTask";
 import TaskList from "./pages/Tasks/TasksList";
+import ChatRoom from "./pages/Chat/FloatingChat";
+import FloatingChat from "./pages/Chat/FloatingChat";
 function App() {
   return (
     <BrowserRouter>
@@ -22,10 +24,12 @@ function App() {
           <Route path="interns/profile" element={<InternProfileForm />} />
           <Route path="interns/my-tasks" element={<MyTask />} />
           <Route path="admin/tasks" element={<TaskList />} />
+         
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Routes>
+      <FloatingChat />
     </BrowserRouter>
   );
 }

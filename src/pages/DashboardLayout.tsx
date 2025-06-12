@@ -4,7 +4,9 @@ import avatar from "../assets/avatar.png";
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import FloatingChat from "./Chat/FloatingChat";
 
+const socket = require("socket.io-client")("http://localhost:3000");
 interface TokenPayload {
   email: string;
   type: string;
@@ -41,6 +43,7 @@ export default function DashboardLayout() {
   }, [navigate]);
 
   const handleLogout = () => {
+    socket.disconnect();
     sessionStorage.clear();
     navigate("/login");
   };
@@ -155,6 +158,8 @@ export default function DashboardLayout() {
       </div>
       <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
         <Outlet />
+        <FloatingChat />
+         {sessionStorage.getItem('accessToken') && <FloatingChat />}
       </div>
     </div>
   );
