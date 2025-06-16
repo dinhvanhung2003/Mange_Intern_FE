@@ -77,6 +77,22 @@ export default function FloatingChatUnified() {
       socket.off('receive_message', handler);
     };
   }, []);
+  // useEffect(() => {
+  //   const handleHistory = (messagesFromRedis: Message[]) => {
+  //     setMessages((prev) => {
+  //       const existingKeys = new Set(prev.map((m) => `${m.senderId}-${m.sentAt}`));
+  //       const uniqueNew = messagesFromRedis.filter(
+  //         (m) => !existingKeys.has(`${m.senderId}-${m.sentAt}`)
+  //       );
+  //       return [...prev, ...uniqueNew];
+  //     });
+  //   };
+
+  //   socket.on('receive_message_history', handleHistory);
+  //   return () => {
+  //     socket.off('receive_message_history', handleHistory);
+  //   };
+  // }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

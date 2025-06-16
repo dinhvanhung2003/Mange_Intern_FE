@@ -2,11 +2,15 @@ import logo from "../assets/login_logo.png";
 import icon_dashboard from "../assets/icon_dashboard.png";
 import avatar from "../assets/avatar.png";
 import { useEffect, useState } from "react";
-import { useNavigate, Link, Outlet } from "react-router-dom";
+import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import FloatingChat from "./Chat/FloatingChat";
-
+import Snackbar from "@mui/material/Snackbar";
+import Badge from "@mui/material/Badge";
+import api from "../utils/axios";
+import NotificationBell from "../components/Ring";
 const socket = require("socket.io-client")("http://localhost:3000");
+
 interface TokenPayload {
   email: string;
   type: string;
@@ -17,7 +21,11 @@ interface TokenPayload {
 export default function DashboardLayout() {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadTasks, setUnreadTasks] = useState(0);
+  const [taskNotification, setTaskNotification] = useState<string | null>(null);
+  const [shake, setShake] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getRoleFromToken = (): string => {
     const token = sessionStorage.getItem("accessToken");
@@ -41,6 +49,34 @@ export default function DashboardLayout() {
       setLoading(false);
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (role === "intern") {
+      api.get("/interns/assignment").then((res) => {
+        if (res.data?.internId) {
+          socket.emit("join", `user-${res.data.internId}`);
+        }
+      });
+
+      socket.on("task_assigned", (task: any) => {
+        setUnreadTasks((prev) => prev + 1);
+        setTaskNotification(`Bạn vừa được giao task: ${task.title}`);
+        setShake(true);
+        setTimeout(() => setShake(false), 1000);
+      });
+
+      return () => {
+        socket.off("task_assigned");
+      };
+    }
+  }, [role]);
+
+  // Reset khi vào trang "My Tasks"
+  useEffect(() => {
+    const handler = () => setUnreadTasks(0);
+    window.addEventListener("reset-unread-tasks", handler);
+    return () => window.removeEventListener("reset-unread-tasks", handler);
+  }, []);
 
   const handleLogout = () => {
     socket.disconnect();
@@ -82,66 +118,47 @@ export default function DashboardLayout() {
           </div>
         </div>
         <nav className="space-y-4">
-          <Link
-            to="/dashboard"
-            className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-          >
+          <Link to="/dashboard" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
             <img src={icon_dashboard} alt="Dashboard" />
             <p>Dashboard</p>
           </Link>
 
           {role === "admin" && (
             <>
-              <Link
-                to="/dashboard/users"
-                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-              >
+              <Link to="/dashboard/users" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
                 <img src={icon_dashboard} alt="User Management" />
                 <p>User Management</p>
               </Link>
-
-              <Link
-                to="/dashboard/admin/tasks"
-                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-              >
+              <Link to="/dashboard/admin/tasks" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
                 <img src={icon_dashboard} alt="Task Management" />
                 <p>Task Management</p>
               </Link>
             </>
           )}
 
-
           {role === "intern" && (
             <>
-              <Link
-                to="/dashboard/interns/profile"
-                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-              >
+              <Link to="/dashboard/interns/profile" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
                 <img src={icon_dashboard} alt="Intern management" />
                 <p>Intern Profile</p>
               </Link>
-
-              <Link
-                to="/dashboard/interns/my-tasks"
-                className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-              >
-                <img src={icon_dashboard} alt="My Tasks" />
-                <p>My Tasks</p>
-              </Link>
+             <Link to="/dashboard/interns/my-tasks" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
+  <img src={icon_dashboard} alt="My Tasks" />
+  <p>My Tasks</p>
+</Link>
             </>
           )}
 
-
           {role === "mentor" && (
-            <Link
-              to="/dashboard/interns"
-              className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer"
-            >
+            <Link to="/dashboard/interns" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
               <img src={icon_dashboard} alt="Intern management" />
               <p>Intern Management</p>
             </Link>
           )}
         </nav>
+    
+
+
 
         <div className="flex items-center mx-auto justify-center">
           <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full" />
@@ -154,13 +171,28 @@ export default function DashboardLayout() {
             Logout
           </button>
         </div>
+      </div>
+     <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
+  <Outlet />
+  <FloatingChat />
+  
+  {role === "intern" && (
+    <NotificationBell
+      unreadTasks={unreadTasks}
+      setUnreadTasks={setUnreadTasks}
+      triggerShake={shake}
+      setShake={setShake}
+    />
+  )}
 
-      </div>
-      <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
-        <Outlet />
-        <FloatingChat />
-         {sessionStorage.getItem('accessToken') && <FloatingChat />}
-      </div>
+  <Snackbar
+    open={!!taskNotification}
+    autoHideDuration={4000}
+    onClose={() => setTaskNotification(null)}
+    message={taskNotification}
+  />
+</div>
+
     </div>
   );
 }

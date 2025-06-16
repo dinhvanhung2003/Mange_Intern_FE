@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogContent,
 } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useEffect, useState } from 'react';
@@ -42,8 +43,12 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const assignedInternIds = new Set(assignments.map((a) => a.intern?.id));
+  // tim kiem de gan 
+  const [internSearch, setInternSearch] = useState('');
+  const [mentorSearch, setMentorSearch] = useState('');
   const [assignForm, setAssignForm] = useState({
-    internId: '',
+    internIds: [] as string[],
     mentorId: '',
     startDate: '',
     endDate: '',
@@ -96,6 +101,11 @@ export default function UserManagement() {
     fetchUsers();
     fetchAssignments();
   }, []);
+  const filteredAssignments = assignments.filter((a) =>
+  `${a.intern?.name || ''} ${a.mentor?.name || ''}`
+    .toLowerCase()
+    .includes(search.toLowerCase())
+);
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -175,42 +185,60 @@ export default function UserManagement() {
             </TableBody>
           </Table>
         )}
+
+
+
       {tab === 'assignment' && (
         <>
           {/* Form gán */}
-          <Box mb={2} display="flex" gap={2} flexWrap="wrap">
-            <TextField
-              select
-              label="Intern"
-              value={assignForm.internId}
-              onChange={(e) => setAssignForm({ ...assignForm, internId: e.target.value })}
-              SelectProps={{ native: true }}
-            >
-              <option value="">-- Chọn intern --</option>
-              {users.filter(u => u.type === 'intern').map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </TextField>
+          <Box mb={2} display="flex" gap={2} flexWrap="wrap" alignItems="center">
+            <Autocomplete
+              multiple
+              options={users.filter(
+                (u) => u.type === 'intern' && !assignedInternIds.has(u.id)
+              )}
+              getOptionLabel={(option) => `${option.name} (${option.email})`}
+              value={users.filter((u) =>
+                assignForm.internIds.includes(u.id.toString())
+              )}
+              onChange={(event, newValue) => {
+                setAssignForm({
+                  ...assignForm,
+                  internIds: newValue.map((u) => u.id.toString()),
+                });
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Chọn interns" variant="outlined" />
+              )}
+              sx={{ minWidth: 300 }}
+            />
 
-            <TextField
-              select
-              label="Mentor"
-              value={assignForm.mentorId}
-              onChange={(e) => setAssignForm({ ...assignForm, mentorId: e.target.value })}
-              SelectProps={{ native: true }}
-            >
-              <option value="">-- Chọn mentor --</option>
-              {users.filter(u => u.type === 'mentor').map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </TextField>
+            <Autocomplete
+              options={users.filter((u) => u.type === 'mentor')}
+              getOptionLabel={(option) => `${option.name} (${option.email})`}
+              value={
+                users.find((u) => u.id.toString() === assignForm.mentorId) || null
+              }
+              onChange={(event, newValue) => {
+                setAssignForm({
+                  ...assignForm,
+                  mentorId: newValue ? newValue.id.toString() : '',
+                });
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Chọn mentor" variant="outlined" />
+              )}
+              sx={{ minWidth: 250 }}
+            />
 
             <TextField
               type="date"
               label="Start Date"
               InputLabelProps={{ shrink: true }}
               value={assignForm.startDate}
-              onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })}
+              onChange={(e) =>
+                setAssignForm({ ...assignForm, startDate: e.target.value })
+              }
             />
 
             <TextField
@@ -218,7 +246,9 @@ export default function UserManagement() {
               label="End Date"
               InputLabelProps={{ shrink: true }}
               value={assignForm.endDate}
-              onChange={(e) => setAssignForm({ ...assignForm, endDate: e.target.value })}
+              onChange={(e) =>
+                setAssignForm({ ...assignForm, endDate: e.target.value })
+              }
             />
 
             <Button
@@ -228,16 +258,25 @@ export default function UserManagement() {
                   await api.post('/admin/assignments', assignForm);
                   fetchAssignments();
                   alert('Gán thành công!');
-                  setAssignForm({ internId: '', mentorId: '', startDate: '', endDate: '' });
+                  setAssignForm({
+                    internIds: [],
+                    mentorId: '',
+                    startDate: '',
+                    endDate: '',
+                  });
                 } catch (err: any) {
                   console.error('Lỗi khi gán:', err.response?.data || err.message);
-                  alert('Gán thất bại!');
+                  alert(
+                    `Gán thất bại: ${err.response?.data?.message || err.message
+                    }`
+                  );
                 }
               }}
             >
-              Gán Intern
+              GÁN INTERNS
             </Button>
           </Box>
+
 
           {/* Danh sách assignment */}
           <Table>
@@ -251,7 +290,7 @@ export default function UserManagement() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {assignments.map((a) => (
+              {filteredAssignments.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell>{a.intern?.name}</TableCell>
                   <TableCell>{a.mentor?.name}</TableCell>
