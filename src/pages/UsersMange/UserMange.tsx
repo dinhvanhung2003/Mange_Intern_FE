@@ -115,7 +115,7 @@ export default function UserManagement() {
             <Tab label="Interns" value="intern" />
             <Tab label="Mentors" value="mentor" />
             <Tab label="Assignments" value="assignment" />
-          </Tabs>
+          </Tabs> 
         </Box>
         <Box display="flex" gap={2}>
           <TextField
@@ -317,7 +317,7 @@ export default function UserManagement() {
         </>
       )}
       <Dialog open={showForm} onClose={() => { setShowForm(false); setEditingUser(null); }} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}</DialogTitle>
+        {/* <DialogTitle>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}</DialogTitle> */}
         <DialogContent>
           <UserForm
             type={resolvedType}

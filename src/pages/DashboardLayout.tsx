@@ -6,7 +6,6 @@ import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import FloatingChat from "./Chat/FloatingChat";
 import Snackbar from "@mui/material/Snackbar";
-import Badge from "@mui/material/Badge";
 import api from "../utils/axios";
 import NotificationBell from "../components/Ring";
 const socket = require("socket.io-client")("http://localhost:3000");
@@ -24,6 +23,8 @@ export default function DashboardLayout() {
   const [unreadTasks, setUnreadTasks] = useState(0);
   const [taskNotification, setTaskNotification] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
+  const [savedNotifications, setSavedNotifications] = useState<any[]>([]);
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,9 +55,15 @@ export default function DashboardLayout() {
     if (role === "intern") {
       api.get("/interns/assignment").then((res) => {
         if (res.data?.internId) {
-          socket.emit("join", `user-${res.data.internId}`);
+          socket.emit("join", res.data.internId); 
         }
       });
+
+      api.get("/notifications")
+        .then((res) => {
+          setSavedNotifications(res.data);
+          setUnreadTasks(res.data.filter((n: any) => !n.isRead).length);
+        });
 
       socket.on("task_assigned", (task: any) => {
         setUnreadTasks((prev) => prev + 1);
@@ -71,7 +78,6 @@ export default function DashboardLayout() {
     }
   }, [role]);
 
-  // Reset khi vào trang "My Tasks"
   useEffect(() => {
     const handler = () => setUnreadTasks(0);
     window.addEventListener("reset-unread-tasks", handler);
@@ -88,12 +94,15 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen relative">
+      {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black opacity-50 z-30 sm:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Sidebar toggle (mobile) */}
       <div className="sm:hidden fixed top-4 left-4 z-50">
         <button onClick={() => setSidebarOpen(!isSidebarOpen)}>
           <svg
@@ -107,9 +116,12 @@ export default function DashboardLayout() {
           </svg>
         </button>
       </div>
+
+      {/* Sidebar */}
       <div
-        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
-          }`}
+        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
+        }`}
       >
         <div className="text-xl font-bold flex">
           <img src={logo} className="w-10 inline-block mr-2" alt="Logo" />
@@ -139,26 +151,23 @@ export default function DashboardLayout() {
           {role === "intern" && (
             <>
               <Link to="/dashboard/interns/profile" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-                <img src={icon_dashboard} alt="Intern management" />
+                <img src={icon_dashboard} alt="Intern Profile" />
                 <p>Intern Profile</p>
               </Link>
-             <Link to="/dashboard/interns/my-tasks" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-  <img src={icon_dashboard} alt="My Tasks" />
-  <p>My Tasks</p>
-</Link>
+              <Link to="/dashboard/interns/my-tasks" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
+                <img src={icon_dashboard} alt="My Tasks" />
+                <p>My Tasks</p>
+              </Link>
             </>
           )}
 
           {role === "mentor" && (
             <Link to="/dashboard/interns" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-              <img src={icon_dashboard} alt="Intern management" />
+              <img src={icon_dashboard} alt="Intern Management" />
               <p>Intern Management</p>
             </Link>
           )}
         </nav>
-    
-
-
 
         <div className="flex items-center mx-auto justify-center">
           <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full" />
@@ -172,27 +181,27 @@ export default function DashboardLayout() {
           </button>
         </div>
       </div>
-     <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
-  <Outlet />
-  <FloatingChat />
-  
-  {role === "intern" && (
-    <NotificationBell
-      unreadTasks={unreadTasks}
-      setUnreadTasks={setUnreadTasks}
-      triggerShake={shake}
-      setShake={setShake}
-    />
-  )}
 
-  <Snackbar
-    open={!!taskNotification}
-    autoHideDuration={4000}
-    onClose={() => setTaskNotification(null)}
-    message={taskNotification}
-  />
-</div>
 
+      <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
+        <Outlet />
+        {(role === "intern" || role === "mentor") && <FloatingChat />}
+        <Snackbar
+          open={!!taskNotification}
+          autoHideDuration={4000}
+          onClose={() => setTaskNotification(null)}
+          message={taskNotification}
+        />
+      </div>
+      {role === "intern" && (
+        <NotificationBell
+          unreadTasks={unreadTasks}
+          setUnreadTasks={setUnreadTasks}
+          triggerShake={shake}
+          setShake={setShake}
+          notifications={savedNotifications}
+        />
+      )}
     </div>
   );
 }

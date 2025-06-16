@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import api from '../../utils/axios';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import { confirmAlert } from 'react-confirm-alert';
+
+import RichTextEditor, { RichTextEditorRef } from '../../components/RichTextEditer';
 export default function MentorDashboard() {
   const [tab, setTab] = useState<'interns' | 'tasks'>('interns');
 
@@ -13,6 +15,9 @@ export default function MentorDashboard() {
   const [expandedIntern, setExpandedIntern] = useState<number | null>(null);
   const [tasksByIntern, setTasksByIntern] = useState<Record<number, any[]>>({});
 
+
+
+  const descEditorRef = useRef<RichTextEditorRef>(null);
   // Task management
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskSearch, setTaskSearch] = useState('');
@@ -60,7 +65,7 @@ export default function MentorDashboard() {
   const handleAssignTask = async () => {
     const taskData: any = {
       title: titleRef.current?.value || '',
-      description: descRef.current?.value || '',
+      description: descEditorRef.current?.getHTML() || '',
       dueDate: dateRef.current?.value || '',
     };
 
@@ -253,7 +258,10 @@ export default function MentorDashboard() {
           {filteredTasks.map((task) => (
             <div key={task.id} className="border p-4 rounded mb-2">
               <h3 className="font-semibold">{task.title}</h3>
-              <p className="text-sm text-gray-600">{task.description}</p>
+              <div
+                className="prose text-sm text-gray-700"
+                dangerouslySetInnerHTML={{ __html: task.description }}
+              />
               <p className="text-sm text-gray-500">
                 Người nhận: {task.assignedTo?.name || task.assignedTo?.email} | Hạn: {task.dueDate} | Trạng thái: {task.status}
               </p>
@@ -299,12 +307,8 @@ export default function MentorDashboard() {
                     ref={titleRef}
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   />
-                  <textarea
-                    placeholder="Mô tả"
-                    ref={descRef}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <RichTextEditor ref={descEditorRef} />
+
                   <input
                     type="date"
                     ref={dateRef}

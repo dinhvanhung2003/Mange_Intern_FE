@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../../utils/axios';
-
+import avatar_chat from '../../assets/avatar_chat.png'
 const socket = io('http://localhost:3000');
 
 interface Message {
@@ -181,7 +181,8 @@ export default function FloatingChatUnified() {
                     marginBottom: 8,
                     background: '#f9f9f9'
                   }}>
-                    🙂 {a.internName}
+                    <img src={avatar_chat} alt="Avatar"></img>
+                     {a.internName}
                   </div>
                 ))}
             </div>

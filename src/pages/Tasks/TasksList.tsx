@@ -9,6 +9,8 @@ import {
     Paper,
     TextField,
     Typography,
+    CircularProgress,
+    Box,
 } from '@mui/material';
 import axios from 'axios';
 
@@ -29,8 +31,10 @@ interface Task {
 }
 
 const TaskList: React.FC = () => {
+    console.log('re-render');
     const [tasks, setTasks] = useState<Task[]>([]);
     const [search, setSearch] = useState('');
+    const [loading, setLoading] = useState(true); 
 
     useEffect(() => {
         const token = sessionStorage.getItem('accessToken');
@@ -42,7 +46,8 @@ const TaskList: React.FC = () => {
                 },
             })
             .then((res) => setTasks(res.data))
-            .catch((err) => console.error('Lỗi khi lấy task:', err.response));
+            .catch((err) => console.error('Lỗi khi lấy task:', err.response))
+            .finally(() => setLoading(false)); 
     }, []);
 
     const filteredTasks = tasks.filter(
@@ -68,32 +73,38 @@ const TaskList: React.FC = () => {
                 onChange={(e) => setSearch(e.target.value)}
             />
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Tiêu đề</TableCell>
-                            <TableCell>Intern</TableCell>
-                            <TableCell>Mentor</TableCell>
-                            <TableCell>Trạng thái</TableCell>
-                            <TableCell>Hạn chót</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredTasks.map((task) => (
-                            <TableRow key={task.id}>
-                                <TableCell>{task.id}</TableCell>
-                                <TableCell>{task.title}</TableCell>
-                                <TableCell>{task.assignedTo?.name} (#{task.assignedTo?.id})</TableCell>
-                                <TableCell>{task.assignedBy?.name} (#{task.assignedBy?.id})</TableCell>
-                                <TableCell>{task.status}</TableCell>
-                                <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
+            {loading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" padding={4}>
+                    <CircularProgress />
+                </Box>
+            ) : (
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>ID</TableCell>
+                                <TableCell>Tiêu đề</TableCell>
+                                <TableCell>Intern</TableCell>
+                                <TableCell>Mentor</TableCell>
+                                <TableCell>Trạng thái</TableCell>
+                                <TableCell>Hạn chót</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {filteredTasks.map((task) => (
+                                <TableRow key={task.id}>
+                                    <TableCell>{task.id}</TableCell>
+                                    <TableCell>{task.title}</TableCell>
+                                    <TableCell>{task.assignedTo?.name || '---'} (#{task.assignedTo?.id || '-'})</TableCell>
+                                    <TableCell>{task.assignedBy?.name || '---'} (#{task.assignedBy?.id || '-'})</TableCell>
+                                    <TableCell>{task.status}</TableCell>
+                                    <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
         </Paper>
     );
 };
