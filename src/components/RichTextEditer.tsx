@@ -26,6 +26,7 @@ interface RichTextEditorProps {
 
 export interface RichTextEditorRef {
   getHTML: () => string;
+  setHTML: (html: string) => void;
 }
 
 const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
@@ -45,6 +46,9 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
     useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() || '',
+      setHTML: (html: string) => {
+        editor?.commands.setContent(html || '');
+      },
     }));
 
     if (!editor) return null;

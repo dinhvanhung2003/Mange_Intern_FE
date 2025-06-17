@@ -52,10 +52,81 @@ export default function DashboardLayout() {
   }, [navigate]);
 
   useEffect(() => {
+    if (role === "intern" && 'serviceWorker' in navigator && 'PushManager' in window) {
+      const registerServiceWorkerAndSubscribe = async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+
+          await new Promise<void>((resolve) => {
+            if (registration.active) return resolve();
+            const readyCheck = setInterval(() => {
+              if (registration.active) {
+                clearInterval(readyCheck);
+                resolve();
+              }
+            }, 100);
+          });
+
+
+          if (Notification.permission !== 'granted') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+              console.warn(' Người dùng chưa cấp quyền nhận thông báo.');
+              return;
+            }
+          }
+
+          const existing = await registration.pushManager.getSubscription();
+          const subscription = existing || await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(
+              'BC8Nn9QOkwrx5s3N4hOrYaGEqiqhdSs0HWoHNuqzRGKETp5YtTxLfVSX6qdKUq3RDhOmOxBwv5nGFMXdG0kug5U'
+            ),
+          });
+
+          await fetch('http://localhost:3001/notifications/save-subscription', {
+
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${sessionStorage.getItem('accessToken')}`,
+            },
+            body: JSON.stringify(subscription),
+          });
+
+          console.log(' Push đăng ký thành công!');
+        } catch (err) {
+          console.error(' Đăng ký Push Notification thất bại:', err);
+        }
+      };
+
+
+
+      const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+          .replace(/\-/g, '+')
+          .replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      };
+
+      registerServiceWorkerAndSubscribe();
+    }
+  }, [role]);
+
+
+
+
+  useEffect(() => {
     if (role === "intern") {
       api.get("/interns/assignment").then((res) => {
         if (res.data?.internId) {
-          socket.emit("join", res.data.internId); 
+          socket.emit("join", res.data.internId);
         }
       });
 
@@ -119,9 +190,8 @@ export default function DashboardLayout() {
 
       {/* Sidebar */}
       <div
-        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
-        }`}
+        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
+          }`}
       >
         <div className="text-xl font-bold flex">
           <img src={logo} className="w-10 inline-block mr-2" alt="Logo" />

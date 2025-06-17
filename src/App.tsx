@@ -12,7 +12,20 @@ import MyTask from "./pages/Interns/MyTask";
 import TaskList from "./pages/Tasks/TasksList";
 import ChatRoom from "./pages/Chat/FloatingChat";
 import FloatingChat from "./pages/Chat/FloatingChat";
+import { useEffect } from "react";
 function App() {
+  useEffect(() => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log(' Service Worker registered:', registration);
+      })
+      .catch((error) => {
+        console.error(' Service Worker registration failed:', error);
+      });
+  }
+}, []);
   return (
     <BrowserRouter>
       <Routes>

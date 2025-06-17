@@ -15,8 +15,6 @@ export default function MentorDashboard() {
   const [expandedIntern, setExpandedIntern] = useState<number | null>(null);
   const [tasksByIntern, setTasksByIntern] = useState<Record<number, any[]>>({});
 
-
-
   const descEditorRef = useRef<RichTextEditorRef>(null);
   // Task management
   const [tasks, setTasks] = useState<any[]>([]);
@@ -62,42 +60,78 @@ export default function MentorDashboard() {
     }
   };
 
-  const handleAssignTask = async () => {
-    const taskData: any = {
-      title: titleRef.current?.value || '',
-      description: descEditorRef.current?.getHTML() || '',
-      dueDate: dateRef.current?.value || '',
-    };
+  // const handleAssignTask = async () => {
+  //   const taskData: any = {
+  //     title: titleRef.current?.value || '',
+  //     description: descEditorRef.current?.getHTML() || '',
+  //     dueDate: dateRef.current?.value || '',
+  //   };
 
-    if (selectedIntern) {
-      taskData.assignedTo = selectedIntern.id;
-    }
+  //   if (selectedIntern) {
+  //     taskData.assignedTo = selectedIntern.id;
+  //   }
 
-    if (!taskData.title || !taskData.dueDate) {
-      alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
-      return;
+  //   if (!taskData.title || !taskData.dueDate) {
+  //     alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
+  //     return;
+  //   }
+  //   if (tab === 'tasks') {
+  //     const res = await api.get('/mentor/tasks');
+  //     setTasks(res.data);
+  //   }
+  //   try {
+  //     await api.post('/mentor/tasks', taskData);
+  //     alert('Đã giao task thành công!');
+  //     setOpenDialog(false);
+
+  //     titleRef.current!.value = '';
+  //     descRef.current!.value = '';
+  //     dateRef.current!.value = '';
+
+  //     if (expandedIntern === selectedIntern.id) {
+  //       fetchTasksForIntern(selectedIntern.id);
+  //     }
+  //   } catch (err) {
+  //     console.error('Lỗi giao task:', err);
+  //     alert('Giao task thất bại!');
+  //   }
+  // };
+const handleAssignTask = async () => {
+  const taskData: any = {
+    title: titleRef.current?.value || '',
+    description: descEditorRef.current?.getHTML() || '',
+    dueDate: dateRef.current?.value || '',
+  };
+
+  if (selectedIntern) {
+    taskData.assignedTo = selectedIntern.id;
+  }
+
+  if (!taskData.title || !taskData.dueDate) {
+    alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
+    return;
+  }
+
+  try {
+    await api.post('/mentor/tasks', taskData);
+    alert('Đã giao task thành công!');
+    setOpenDialog(false);
+    if (titleRef.current) titleRef.current.value = '';
+    if (dateRef.current) dateRef.current.value = '';
+    descEditorRef.current?.setHTML?.(''); 
+    if (expandedIntern === selectedIntern?.id) {
+      fetchTasksForIntern(selectedIntern.id);
     }
     if (tab === 'tasks') {
       const res = await api.get('/mentor/tasks');
       setTasks(res.data);
     }
-    try {
-      await api.post('/mentor/tasks', taskData);
-      alert('Đã giao task thành công!');
-      setOpenDialog(false);
 
-      titleRef.current!.value = '';
-      descRef.current!.value = '';
-      dateRef.current!.value = '';
-
-      if (expandedIntern === selectedIntern.id) {
-        fetchTasksForIntern(selectedIntern.id);
-      }
-    } catch (err) {
-      console.error('Lỗi giao task:', err);
-      alert('Giao task thất bại!');
-    }
-  };
+  } catch (err) {
+    console.error('Lỗi giao task:', err);
+    alert('Giao task thất bại!');
+  }
+};
 
   const handleDeleteTask = (taskId: number) => {
     confirmAlert({
