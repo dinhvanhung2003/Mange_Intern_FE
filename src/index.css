@@ -14,3 +14,21 @@
 .shake {
   animation: shake 0.6s ease-in-out;
 }
+.toolbar-btn {
+  padding: 6px;
+  border-radius: 4px;
+  background-color: white;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background-color: #f0f0f0;
+}
+
+@layer components {
+  .editor-content [contenteditable]:focus {
+    @apply outline-none ring-0 shadow-none;
+  }
+}

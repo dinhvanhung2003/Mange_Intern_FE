@@ -1,24 +1,17 @@
 import {
   useEditor,
   EditorContent,
-  Editor,
 } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
-import { useImperativeHandle, forwardRef } from 'react';
+import Image from '@tiptap/extension-image';
 
-// ICONS
-import { MdFormatBold } from 'react-icons/md';
-import { MdFormatItalic } from 'react-icons/md';
-import { MdFormatUnderlined } from 'react-icons/md';
-import { MdFormatColorText } from 'react-icons/md';
-import { MdFormatAlignLeft } from 'react-icons/md';
-import { MdFormatAlignCenter } from 'react-icons/md';
-import { MdFormatAlignRight } from 'react-icons/md';
-import { MdCode } from 'react-icons/md';
+import { useImperativeHandle, forwardRef, useRef } from 'react';
+import { MdFormatBold, MdFormatItalic, MdFormatUnderlined, MdFormatColorText, MdFormatAlignLeft, MdFormatAlignCenter, MdFormatAlignRight, MdCode } from 'react-icons/md';
+import { FaImage } from 'react-icons/fa';
 
 interface RichTextEditorProps {
   initialContent?: string;
@@ -37,12 +30,13 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         Underline,
         TextStyle,
         Color,
-        TextAlign.configure({
-          types: ['heading', 'paragraph'],
-        }),
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Image,
       ],
       content: initialContent,
     });
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() || '',
@@ -51,10 +45,47 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
       },
     }));
 
+    const handleUploadImage = async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('http://localhost:3000/tasks/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.url) {
+          editor?.chain().focus().setImage({ src: data.url }).run();
+        } else {
+          alert('Upload thất bại!');
+        }
+      } catch (err) {
+        console.error('Upload lỗi:', err);
+        alert('Lỗi upload ảnh!');
+      }
+    };
+
+
+    const handleImageClick = () => {
+      fileInputRef.current?.click();
+    };
+
     if (!editor) return null;
 
     return (
       <div className="border rounded-md">
+        <input
+          type="file"
+          accept="image/*"
+          hidden
+          ref={fileInputRef}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleUploadImage(file);
+          }}
+        />
+
         {/* Toolbar */}
         <div className="flex flex-wrap gap-1 p-2 border-b bg-gray-50">
           <button onClick={() => editor.chain().focus().toggleBold().run()} className="toolbar-btn">
@@ -86,10 +117,20 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           <button onClick={() => editor.chain().focus().toggleCodeBlock().run()} className="toolbar-btn">
             <MdCode size={20} />
           </button>
+          <button onClick={handleImageClick} className="toolbar-btn" title="Upload ảnh từ máy">
+            <FaImage size={18} />
+          </button>
         </div>
 
         {/* Editor Content */}
-        <EditorContent editor={editor} className="min-h-[150px] p-2" />
+       <EditorContent
+  editor={editor}
+  className="editor-content min-h-[150px] p-2 w-full"
+  style={{ width: '100%' }}
+/>
+
+
+
       </div>
     );
   }

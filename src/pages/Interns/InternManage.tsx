@@ -96,42 +96,42 @@ export default function MentorDashboard() {
   //     alert('Giao task thất bại!');
   //   }
   // };
-const handleAssignTask = async () => {
-  const taskData: any = {
-    title: titleRef.current?.value || '',
-    description: descEditorRef.current?.getHTML() || '',
-    dueDate: dateRef.current?.value || '',
+  const handleAssignTask = async () => {
+    const taskData: any = {
+      title: titleRef.current?.value || '',
+      description: descEditorRef.current?.getHTML() || '',
+      dueDate: dateRef.current?.value || '',
+    };
+
+    if (selectedIntern) {
+      taskData.assignedTo = selectedIntern.id;
+    }
+
+    if (!taskData.title || !taskData.dueDate) {
+      alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
+      return;
+    }
+
+    try {
+      await api.post('/mentor/tasks', taskData);
+      alert('Đã giao task thành công!');
+      setOpenDialog(false);
+      if (titleRef.current) titleRef.current.value = '';
+      if (dateRef.current) dateRef.current.value = '';
+      descEditorRef.current?.setHTML?.('');
+      if (expandedIntern === selectedIntern?.id) {
+        fetchTasksForIntern(selectedIntern.id);
+      }
+      if (tab === 'tasks') {
+        const res = await api.get('/mentor/tasks');
+        setTasks(res.data);
+      }
+
+    } catch (err) {
+      console.error('Lỗi giao task:', err);
+      alert('Giao task thất bại!');
+    }
   };
-
-  if (selectedIntern) {
-    taskData.assignedTo = selectedIntern.id;
-  }
-
-  if (!taskData.title || !taskData.dueDate) {
-    alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
-    return;
-  }
-
-  try {
-    await api.post('/mentor/tasks', taskData);
-    alert('Đã giao task thành công!');
-    setOpenDialog(false);
-    if (titleRef.current) titleRef.current.value = '';
-    if (dateRef.current) dateRef.current.value = '';
-    descEditorRef.current?.setHTML?.(''); 
-    if (expandedIntern === selectedIntern?.id) {
-      fetchTasksForIntern(selectedIntern.id);
-    }
-    if (tab === 'tasks') {
-      const res = await api.get('/mentor/tasks');
-      setTasks(res.data);
-    }
-
-  } catch (err) {
-    console.error('Lỗi giao task:', err);
-    alert('Giao task thất bại!');
-  }
-};
 
   const handleDeleteTask = (taskId: number) => {
     confirmAlert({
@@ -293,9 +293,17 @@ const handleAssignTask = async () => {
             <div key={task.id} className="border p-4 rounded mb-2">
               <h3 className="font-semibold">{task.title}</h3>
               <div
-                className="prose text-sm text-gray-700"
-                dangerouslySetInnerHTML={{ __html: task.description }}
-              />
+                className="prose max-w-none
+             [&_img]:max-w-[500px] 
+             [&_img]:w-full 
+             [&_img]:h-auto 
+             [&_img]:rounded-md 
+             [&_img]:mx-auto"
+              >
+                <div dangerouslySetInnerHTML={{ __html: task.description }} />
+              </div>
+
+
               <p className="text-sm text-gray-500">
                 Người nhận: {task.assignedTo?.name || task.assignedTo?.email} | Hạn: {task.dueDate} | Trạng thái: {task.status}
               </p>
@@ -339,9 +347,12 @@ const handleAssignTask = async () => {
                     type="text"
                     placeholder="Tiêu đề"
                     ref={titleRef}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-gray-300 rounded px-3 py-2 outline-none focus:outline-none ring-0 focus:ring-0"
                   />
-                  <RichTextEditor ref={descEditorRef} />
+
+                  <div className="w-full">
+                    <RichTextEditor ref={descEditorRef} />
+                  </div>
 
                   <input
                     type="date"
