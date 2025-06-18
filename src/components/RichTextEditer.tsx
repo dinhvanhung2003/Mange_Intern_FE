@@ -10,11 +10,21 @@ import TextAlign from '@tiptap/extension-text-align';
 import Image from '@tiptap/extension-image';
 
 import { useImperativeHandle, forwardRef, useRef } from 'react';
-import { MdFormatBold, MdFormatItalic, MdFormatUnderlined, MdFormatColorText, MdFormatAlignLeft, MdFormatAlignCenter, MdFormatAlignRight, MdCode } from 'react-icons/md';
+import {
+  MdFormatBold,
+  MdFormatItalic,
+  MdFormatUnderlined,
+  MdFormatColorText,
+  MdFormatAlignLeft,
+  MdFormatAlignCenter,
+  MdFormatAlignRight,
+  MdCode,
+} from 'react-icons/md';
 import { FaImage } from 'react-icons/fa';
 
 interface RichTextEditorProps {
   initialContent?: string;
+  taskId?: number;
 }
 
 export interface RichTextEditorRef {
@@ -23,7 +33,7 @@ export interface RichTextEditorRef {
 }
 
 const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
-  ({ initialContent = '' }, ref) => {
+  ({ initialContent = '', taskId }, ref) => {
     const editor = useEditor({
       extensions: [
         StarterKit,
@@ -48,24 +58,31 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const handleUploadImage = async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
+      if (taskId) formData.append('taskId', String(taskId));
 
       try {
         const res = await fetch('http://localhost:3000/tasks/upload-image', {
           method: 'POST',
           body: formData,
         });
+
+        if (!res.ok) {
+          const err = await res.json();
+          alert(`Upload thất bại: ${err.message}`);
+          return;
+        }
+
         const data = await res.json();
         if (data.url) {
           editor?.chain().focus().setImage({ src: data.url }).run();
         } else {
-          alert('Upload thất bại!');
+          alert('Không nhận được URL ảnh.');
         }
       } catch (err) {
-        console.error('Upload lỗi:', err);
+        console.error('Lỗi upload:', err);
         alert('Lỗi upload ảnh!');
       }
     };
-
 
     const handleImageClick = () => {
       fileInputRef.current?.click();
@@ -86,7 +103,6 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           }}
         />
 
-        {/* Toolbar */}
         <div className="flex flex-wrap gap-1 p-2 border-b bg-gray-50">
           <button onClick={() => editor.chain().focus().toggleBold().run()} className="toolbar-btn">
             <MdFormatBold size={20} />
@@ -117,20 +133,16 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           <button onClick={() => editor.chain().focus().toggleCodeBlock().run()} className="toolbar-btn">
             <MdCode size={20} />
           </button>
-          <button onClick={handleImageClick} className="toolbar-btn" title="Upload ảnh từ máy">
+          <button onClick={handleImageClick} className="toolbar-btn" title="Tải ảnh từ máy">
             <FaImage size={18} />
           </button>
         </div>
 
-        {/* Editor Content */}
-       <EditorContent
-  editor={editor}
-  className="editor-content min-h-[150px] p-2 w-full"
-  style={{ width: '100%' }}
-/>
-
-
-
+        <EditorContent
+          editor={editor}
+          className="editor-content min-h-[150px] p-2 w-full"
+          style={{ width: '100%' }}
+        />
       </div>
     );
   }
