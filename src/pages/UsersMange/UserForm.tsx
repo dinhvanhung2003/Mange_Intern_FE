@@ -1,7 +1,7 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 
-type UserType = "intern" | "mentor";
+export type UserType = "intern" | "mentor";
 
 interface FormData {
   name: string;

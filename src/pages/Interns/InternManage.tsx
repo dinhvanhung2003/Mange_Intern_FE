@@ -28,6 +28,9 @@ export default function MentorDashboard() {
   const [internTaskSearch, setInternTaskSearch] = useState('');
   const queryClient = useQueryClient();
   const [debouncedTaskSearch] = useDebounce(taskSearch, 300);
+  //paging 
+  const [page, setPage] = useState(1);
+const limit = 10; // số task trên mỗi trang
   const { data: interns = [] } = useQuery({
     queryKey: ['mentorInterns'],
     queryFn: () => api.get('/mentor/interns').then(res => res.data),
