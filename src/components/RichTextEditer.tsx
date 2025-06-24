@@ -9,7 +9,7 @@ export interface RichTextEditorRef {
 interface RichTextEditorProps {
   initialContent?: string;
 }
-
+// tiny richtext
 const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
   ({ initialContent = '' }, ref) => {
     const editorRef = useRef<any>(null);
