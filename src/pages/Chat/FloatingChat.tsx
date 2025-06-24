@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../../utils/axios';
 import avatar_chat from '../../assets/avatar_chat.png'
+import { useAssignmentStore } from '../../stores/useAssignmentStore';
 const socket = io('http://localhost:3000');
 
 interface Message {
@@ -39,6 +40,8 @@ export default function FloatingChatUnified() {
   const [searchTerm, setSearchTerm] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
+
+const { assignment } = useAssignmentStore();
   useEffect(() => {
     if (!user) return;
 
@@ -48,14 +51,25 @@ export default function FloatingChatUnified() {
         setAssignments(data);
         setCurrentUserId(user.sub);
       });
-    } else {
-      api.get('/interns/assignment').then((res) => {
-        const { id, internId, mentorId } = res.data;
-        setSelectedAssignment({ id, internId });
-        setCurrentUserId(user.sub);
-      });
-    }
+    } 
+    // else {
+    //   api.get('/interns/assignment').then((res) => {
+    //     const { id, internId, mentorId } = res.data;
+    //     setSelectedAssignment({ id, internId });
+    //     setCurrentUserId(user.sub);
+    //   });
+    // }
   }, []);
+useEffect(() => {
+  if (assignment) {
+    setSelectedAssignment({
+      id: assignment.id,
+      internId: assignment.internId,
+      internName: user?.name,
+    });
+    setCurrentUserId(user.sub);
+  }
+}, [assignment]);
 
   useEffect(() => {
     if (!selectedAssignment) return;

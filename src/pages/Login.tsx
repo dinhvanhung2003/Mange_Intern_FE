@@ -3,6 +3,7 @@ import axios from 'axios';
 import logo_login from '../assets/login_logo.png';
 import background_login from '../assets/background_login.png';
 import { useNavigate } from 'react-router-dom';
+import { FiRefreshCw } from 'react-icons/fi';
 import api from '../utils/axios';
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -38,10 +39,6 @@ const Login = () => {
       setLoading(false);
       return;
     }
-
-
-
-
     if (password.length < 6) {
       setError('Mật khẩu phải có ít nhất 6 ký tự.');
       setLoading(false);
@@ -76,82 +73,109 @@ const Login = () => {
     return result;
   }
   return (
-    <div className="h-screen bg-gray-50 flex justify-center items-center relative">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md z-10">
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex flex-row items-center mb-2">
-            <img src={logo_login} alt="Logo" className="h-10 mb-2" />
-            <h1 className="text-xl font-bold text-gray-800 ml-2">UTTAR PRADESH TIMES</h1>
-          </div>
-          <p className="text-xl text-blue-800 font-semibold mt-4">Welcome Back</p>
+    <div className="relative flex justify-center items-center min-h-screen bg-gray-100">
+      <div className="z-10 bg-white rounded-md shadow-md w-full max-w-sm px-6 py-6">
+
+        {/* Logo */}
+        <div className="flex items-center justify-center mb-4">
+          <img src={logo_login} alt="Logo" className="h-8" />
+          <h1 className="text-lg font-bold text-gray-900 ml-2">UTTAR PRADESH TIMES</h1>
         </div>
-        <input
-          type="email"
-          placeholder="hannah.green@test.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border p-2 w-full mb-3 rounded outline-none"
-        />
-        <input
-          type="password"
-          placeholder="Password123@"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border p-2 w-full mb-3 rounded outline-none"
-        />
-        <div className="flex items-center mb-3">
+
+        {/* Welcome */}
+        <h2 className="text-xl font-semibold text-[#153060] mb-4">Welcome Back</h2>
+
+
+        {/* Email */}
+        <div className="mb-3">
+          <label className="text-sm text-[#153060] font-medium">User Name</label>
           <input
-            type="text"
-            placeholder="Enter the shown text"
-            value={captcha}
-            onChange={(e) => setCaptcha(e.target.value)}
-            className="border p-2 w-full mr-2 rounded outline-none"
+            type="email"
+            placeholder="hannah.green@test.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1 border border-gray-300 bg-gray-50 p-2 w-full rounded-sm text-sm outline-none"
           />
-          <div className="border p-2 text-lg font-bold bg-gray-100 select-none">{captchaText}</div>
-          <button
-            onClick={() => setCaptchaText(generateCaptcha())}
-            className="ml-2 text-blue-600 hover:underline text-sm"
-          >
-            Refresh
-          </button>
         </div>
-        {error && <div className="text-red-500 mb-3 text-sm">{error}</div>}
+
+        {/* Password */}
+        <div className="mb-3">
+          <label className="text-sm text-[#153060] font-medium">Password</label>
+          <input
+            type="password"
+            placeholder="Password123@"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-1 border border-gray-300 bg-gray-50 p-2 w-full rounded-sm text-sm outline-none"
+          />
+        </div>
+
+        {/* Captcha */}
+        <div className="mb-3">
+          <label className="text-sm text-[#153060] font-medium">Security Text</label>
+          <div className="flex items-center mt-1 space-x-2">
+            <input
+              type="text"
+              placeholder="Enter the shown text"
+              value={captcha}
+              onChange={(e) => setCaptcha(e.target.value)}
+              className="border border-gray-300 p-2 rounded-sm w-full text-sm outline-none"
+            />
+            <div className="captcha-box relative border border-gray-300 rounded-md bg-white px-3 py-2 text-lg font-extrabold text-black select-none">
+              {captchaText}
+            </div>
+
+            <button
+              onClick={() => setCaptchaText(generateCaptcha())}
+              className="text-blue-600 hover:text-blue-800"
+              title="Refresh Captcha"
+            >
+              <FiRefreshCw size={18} />
+            </button>
+          </div>
+        </div>
+        {error && (
+          <div className="text-red-600 text-sm mb-3">
+            {error}
+          </div>
+        )}
+        {/* Checkbox */}
         <div className="flex items-center mb-4">
           <input
             type="checkbox"
             checked={rememberMe}
             onChange={() => setRememberMe(!rememberMe)}
-            className="mr-2"
+            className="mr-2 w-4 h-4 text-blue-600 bg-white border border-gray-300 rounded focus:ring-blue-500"
           />
           <label className="text-sm text-gray-700">Remember me on this computer</label>
-
         </div>
 
+        {/* Button */}
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="bg-blue-800 text-white w-full py-2 rounded hover:bg-blue-900 disabled:opacity-50"
+          className="w-full bg-[#1D3C78] text-white py-2 rounded-sm hover:bg-[#102952] transition disabled:opacity-50"
         >
           {loading ? 'Logging in...' : 'Log in'}
         </button>
-        <div>
-          <p className="text-sm text-center mt-4">
-            Chưa có tài khoản?{' '}
-            <span
-              className="text-blue-600 cursor-pointer hover:underline"
-              onClick={() => navigate('/register')}
-            >
-              Đăng ký ngay
-            </span>
-          </p>
-        </div>
+        <p className="text-sm text-center mt-4">
+          Chưa có tài khoản?{' '}
+          <span
+            className="text-blue-600 cursor-pointer hover:underline"
+            onClick={() => navigate('/register')}
+          >
+            Đăng ký ngay
+          </span>
+        </p>
       </div>
 
-      <div className="absolute bottom-0 w-full">
-        <img src={background_login} alt="Cityline" className="w-full opacity-80" />
-      </div>
+      {/* Background Image */}
+      <img
+        src={background_login}
+        alt="Background"
+        className="absolute bottom-0 left-0 w-full z-0 opacity-90"
+      />
     </div>
   );
 };
-
 export default Login;

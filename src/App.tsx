@@ -13,19 +13,25 @@ import TaskList from "./pages/Tasks/TasksList";
 import ChatRoom from "./pages/Chat/FloatingChat";
 import FloatingChat from "./pages/Chat/FloatingChat";
 import { useEffect } from "react";
+import { useAssignmentStore } from "./stores/useAssignmentStore";
 function App() {
+//   useEffect(() => {
+//   if ('serviceWorker' in navigator) {
+//     navigator.serviceWorker
+//       .register('/sw.js')
+//       .then((registration) => {
+//         console.log(' Service Worker registered:', registration);
+//       })
+//       .catch((error) => {
+//         console.error(' Service Worker registration failed:', error);
+//       });
+//   }
+// }, []);
+ const { fetchAssignment } = useAssignmentStore();
+
   useEffect(() => {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log(' Service Worker registered:', registration);
-      })
-      .catch((error) => {
-        console.error(' Service Worker registration failed:', error);
-      });
-  }
-}, []);
+    fetchAssignment(); 
+  }, []);
   return (
     <BrowserRouter>
       <Routes>

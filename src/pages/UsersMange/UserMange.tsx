@@ -110,7 +110,8 @@ export default function UserManagement() {
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>User Management</h2>
+         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#243874' }}>User Management</h2>
+
           <Tabs value={tab} onChange={(e, v) => setTab(v)} textColor="primary">
             <Tab label="Interns" value="intern" />
             <Tab label="Mentors" value="mentor" />

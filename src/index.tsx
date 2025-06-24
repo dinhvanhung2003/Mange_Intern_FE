@@ -3,14 +3,35 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // thời gian giữ cache không gọi lại API
+      staleTime: 5 * 60 * 1000, // 5 phút
 
+      // dữ liệu được giữ lại trong cache sau khi component unmount
+       gcTime: 10 * 60 * 1000, // 10 phút
+
+      // không tự động gọi lại API khi window refocus
+      refetchOnWindowFocus: false,
+
+      // gọi lại khi kết nối mạng khôi phục
+      refetchOnReconnect: true,
+    },
+  },
+});
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
-  <React.StrictMode>
+  // <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
     <App />
-  </React.StrictMode>
+     <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>
+  // </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function

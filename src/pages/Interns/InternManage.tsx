@@ -2,31 +2,54 @@ import { useEffect, useRef, useState } from 'react';
 import api from '../../utils/axios';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import { confirmAlert } from 'react-confirm-alert';
-
+import { useSearchParams } from 'react-router-dom';
 import RichTextEditor, { RichTextEditorRef } from '../../components/RichTextEditer';
-
+import DescriptionViewerDialog from '../../components/DesciptionTask';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
 export default function MentorDashboard() {
-  const [tab, setTab] = useState<'interns' | 'tasks'>('interns');
-  const [interns, setInterns] = useState<any[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as 'interns' | 'tasks') || 'interns';
+  const [tab, setTab] = useState<'interns' | 'tasks'>(initialTab);
   const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedIntern, setSelectedIntern] = useState<any | null>(null);
-  const [expandedIntern, setExpandedIntern] = useState<number | null>(null);
   const [tasksByIntern, setTasksByIntern] = useState<Record<number, any[]>>({});
-
+  const [taskModalIntern, setTaskModalIntern] = useState<any | null>(null);
   const descEditorRef = useRef<RichTextEditorRef>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
-
-  const [tasks, setTasks] = useState<any[]>([]);
   const [taskSearch, setTaskSearch] = useState('');
   const [mode, setMode] = useState<'new' | 'reuse'>('new');
   const [myTasks, setMyTasks] = useState<any[]>([]);
   const [reuseSearch, setReuseSearch] = useState('');
+  const [descDialogOpen, setDescDialogOpen] = useState(false);
+  const [descContent, setDescContent] = useState('');
+  const [internTaskSearch, setInternTaskSearch] = useState('');
+  const queryClient = useQueryClient();
+  const [debouncedTaskSearch] = useDebounce(taskSearch, 300);
+  const { data: interns = [] } = useQuery({
+    queryKey: ['mentorInterns'],
+    queryFn: () => api.get('/mentor/interns').then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const filteredMyTasks = myTasks.filter((task) =>
-    `${task.title} ${task.description}`.toLowerCase().includes(reuseSearch.toLowerCase())
-  );
+  const { data: tasks = [], refetch: refetchTasks } = useQuery({
+    queryKey: ['mentorTasks', debouncedTaskSearch],
+    queryFn: () =>
+      api.get('mentor/tasks', { params: { title: debouncedTaskSearch } }).then(res => res.data),
+
+    enabled: tab === 'tasks',
+    staleTime: 5 * 60 * 1000,
+  });
+
+
+  useEffect(() => {
+    const currentTab = searchParams.get('tab');
+    if (currentTab === 'interns' || currentTab === 'tasks') {
+      setTab(currentTab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (mode === 'reuse') {
@@ -34,38 +57,23 @@ export default function MentorDashboard() {
     }
   }, [mode]);
 
-  useEffect(() => {
-    api.get('/mentor/interns')
-      .then((res) => setInterns(res.data))
-      .catch((err) => console.error('Lỗi tải interns:', err));
-  }, []);
-
-  useEffect(() => {
-    if (tab === 'tasks') {
-      api.get('/mentor/tasks')
-        .then((res) => setTasks(res.data))
-        .catch((err) => console.error('Lỗi tải tasks:', err));
-    }
-  }, [tab]);
-
-  const fetchTasksForIntern = async (internId: number) => {
-    try {
-      const res = await api.get(`/mentor/interns/${internId}/tasks`);
-      setTasksByIntern((prev) => ({ ...prev, [internId]: res.data }));
-    } catch (err) {
-      console.error('Lỗi tải task:', err);
-    }
-  };
-
   const handleCreateTask = async () => {
     if (!titleRef.current || !dateRef.current || !descEditorRef.current) return;
-
     const title = titleRef.current.value.trim();
     const dueDate = dateRef.current.value;
     const description = descEditorRef.current.getHTML();
 
     if (!title || !dueDate) {
       alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
+      return;
+    }
+    const today = new Date();
+    const dueDateObj = new Date(dueDate);
+    today.setHours(0, 0, 0, 0);
+    dueDateObj.setHours(0, 0, 0, 0);
+
+    if (dueDateObj < today) {
+      alert('Ngày hạn không được nhỏ hơn ngày hôm nay!');
       return;
     }
 
@@ -76,18 +84,12 @@ export default function MentorDashboard() {
         description,
         assignedTo: selectedIntern?.id || null,
       });
-
       alert('Đã tạo task thành công!');
       setOpenDialog(false);
-
       titleRef.current.value = '';
       dateRef.current.value = '';
       descEditorRef.current.setHTML('');
-
-      if (tab === 'tasks') {
-        const res = await api.get('/mentor/tasks');
-        setTasks(res.data);
-      }
+      queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
       if (selectedIntern) fetchTasksForIntern(selectedIntern.id);
     } catch (err) {
       console.error('Lỗi tạo task:', err);
@@ -105,125 +107,123 @@ export default function MentorDashboard() {
           onClick: async () => {
             try {
               await api.delete(`/mentor/tasks/${taskId}`);
-              setTasks((prev) => prev.filter((t) => t.id !== taskId));
+              queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+              if (taskModalIntern) fetchTasksForIntern(taskModalIntern.id);
             } catch {
               alert('Xoá task thất bại!');
             }
           },
         },
-        { label: 'Huỷ', onClick: () => {} },
+        { label: 'Huỷ', onClick: () => { } },
       ],
     });
   };
 
-  const filteredInterns = interns.filter((i) =>
+  const fetchTasksForIntern = async (internId: number) => {
+    try {
+      const res = await api.get(`/mentor/interns/${internId}/tasks`);
+      setTasksByIntern(prev => ({ ...prev, [internId]: res.data }));
+    } catch (err) {
+      console.error('Lỗi tải task:', err);
+    }
+  };
+
+  const filteredInterns = interns.filter((i: any) =>
     `${i.name} ${i.email}`.toLowerCase().includes(search.toLowerCase())
   );
 
-  const filteredTasks = tasks.filter((t) =>
+  const filteredTasks = tasks.filter((t: any) =>
     `${t.title} ${t.assignedTo?.name || ''}`.toLowerCase().includes(taskSearch.toLowerCase())
   );
 
+  const filteredMyTasks = myTasks.filter(
+    (task) =>
+      !task.assignedTo?.id &&
+      `${task.title} ${task.description}`.toLowerCase().includes(reuseSearch.toLowerCase())
+  );
   return (
     <div className="p-6">
       {/* Tabs */}
-      <div className="flex gap-4 mb-4">
+      {/* <div className="flex gap-4 mb-4">
         <button
           className={`px-4 py-2 rounded ${tab === 'interns' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          onClick={() => setTab('interns')}
+          onClick={() => {
+            setTab('interns');
+            setSearchParams({ tab: 'interns' });
+          }}
         >
           Quản lý Intern
         </button>
+
         <button
           className={`px-4 py-2 rounded ${tab === 'tasks' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          onClick={() => setTab('tasks')}
+          onClick={() => {
+            setTab('tasks');
+            setSearchParams({ tab: 'tasks' });
+          }}
         >
           Quản lý Task
         </button>
-      </div>
+
+      </div> */}
 
       {/* Interns View */}
       {tab === 'interns' && (
         <>
-          <h2 className="text-2xl font-semibold mb-4">Danh sách Intern</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-[#243874]">Danh sách Intern</h2>
           <input
             type="text"
             placeholder="Tìm kiếm intern"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="mb-4 border rounded px-3 py-2 w-full sm:w-64"
+            className="mb-4 border rounded px-3 py-2 w-full sm:w-64 outline-none"
           />
           <div className="space-y-4">
-            {filteredInterns.map((intern) => (
-              <div key={intern.id} className="border rounded-md p-4 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">{intern.name}</h3>
-                    <p className="text-sm text-gray-600">{intern.email}</p>
-                    <p className="text-sm text-gray-600">{intern.school || 'Chưa có trường'}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
-                      onClick={() => {
-                        setSelectedIntern(intern);
-                        setOpenDialog(true);
-                        setMode('new');
-                      }}
-                    >
-                      Giao Task
-                    </button>
-                    <button
-                      className="border border-gray-300 px-3 py-1 rounded"
-                      onClick={() => {
-                        const shouldExpand = expandedIntern !== intern.id;
-                        setExpandedIntern(shouldExpand ? intern.id : null);
-                        if (shouldExpand && !tasksByIntern[intern.id]) {
+
+            <table className="min-w-full border border-gray-200 divide-y divide-gray-200 shadow-sm rounded-md overflow-hidden">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase text-left">
+                <tr>
+                  <th className="px-4 py-2">Tên</th>
+                  <th className="px-4 py-2">Email</th>
+                  <th className="px-4 py-2">Trường</th>
+                  <th className="px-4 py-2">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-800 bg-white">
+                {filteredInterns.map((intern: any) => (
+                  <tr key={intern.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 whitespace-nowrap">{intern.name}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{intern.email}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{intern.school || 'Chưa có trường'}</td>
+                    <td className="px-4 py-2 space-x-2 whitespace-nowrap">
+                      <button
+                        className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-medium"
+                        onClick={() => {
+                          setSelectedIntern(intern);
+                          setOpenDialog(true);
+                          setMode('new');
+                        }}
+                      >
+                        Giao Task
+                      </button>
+                      <button
+                        className="text-gray-700 border border-gray-300 hover:bg-gray-100 px-3 py-1 rounded text-xs font-medium"
+                        onClick={() => {
+                          setTaskModalIntern(intern);
                           fetchTasksForIntern(intern.id);
-                        }
-                      }}
-                    >
-                      {expandedIntern === intern.id ? 'Ẩn task' : 'Xem task'}
-                    </button>
-                  </div>
-                </div>
-                {expandedIntern === intern.id && (
-                  <div className="mt-4 pl-4 border-l border-gray-200">
-                    {(tasksByIntern[intern.id] || []).map((task) => (
-                      <div key={task.id} className="mb-2">
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="font-medium">{task.title}</p>
-                            <p className="text-sm text-gray-500">
-                              Hạn: {task.dueDate} | Trạng thái: {task.status}
-                            </p>
-                          </div>
-                          {task.status === 'in_progress' && (
-                            <button
-                              className="text-green-600 hover:underline text-sm"
-                              onClick={async () => {
-                                try {
-                                  await api.patch(`/mentor/tasks/${task.id}/complete`);
-                                  fetchTasksForIntern(intern.id);
-                                } catch {
-                                  alert('Lỗi khi hoàn thành task!');
-                                }
-                              }}
-                            >
-                              Hoàn thành
-                            </button>
-                          )}
-                        </div>
-                        <hr className="my-2" />
-                      </div>
-                    ))}
-                    {tasksByIntern[intern.id]?.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">Chưa có task nào.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                        }}
+                      >
+                        Xem task
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+
+
+
           </div>
         </>
       )}
@@ -231,7 +231,7 @@ export default function MentorDashboard() {
       {/* Tasks View */}
       {tab === 'tasks' && (
         <>
-          <h2 className="text-2xl font-semibold mb-4">Quản lý Task đã tạo</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-[#243874]">Quản lý Task </h2>
           <button
             className="bg-blue-600 text-white px-4 py-2 rounded"
             onClick={() => {
@@ -247,32 +247,62 @@ export default function MentorDashboard() {
             placeholder="Tìm theo tiêu đề hoặc intern"
             value={taskSearch}
             onChange={(e) => setTaskSearch(e.target.value)}
-            className="mb-4 border rounded px-3 py-2 w-full sm:w-64"
+            className="mb-4 border rounded px-3 py-2 w-full sm:w-64 outline-none"
           />
 
-          {filteredTasks.map((task) => (
-            <div key={task.id} className="border p-4 rounded mb-2">
-              <h3 className="font-semibold">{task.title}</h3>
-              <div className="prose max-w-none [&_img]:max-w-[500px] [&_img]:w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:mx-auto">
-                <div dangerouslySetInnerHTML={{ __html: task.description }} />
-              </div>
-              <p className="text-sm text-gray-500">
-                Người nhận: {task.assignedTo?.name || task.assignedTo?.email} | Hạn: {task.dueDate} | Trạng thái: {task.status}
-              </p>
-              <div className="mt-2 flex gap-2">
-                <button className="text-red-600 text-sm" onClick={() => handleDeleteTask(task.id)}>
-                  Xoá
-                </button>
-              </div>
-            </div>
-          ))}
+          <table className="min-w-full border border-gray-200 divide-y divide-gray-200 shadow-sm rounded-md overflow-hidden mt-4">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase text-left">
+              <tr>
+                <th className="px-4 py-2">Tiêu đề</th>
+                <th className="px-4 py-2">Mô tả</th>
+                <th className="px-4 py-2">Người nhận</th>
+                <th className="px-4 py-2">Hạn</th>
+                <th className="px-4 py-2">Trạng thái</th>
+                <th className="px-4 py-2">Hành động</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-sm text-gray-800 bg-white">
+              {tasks.map((task: any) => (
+                <tr key={task.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 font-medium whitespace-nowrap">{task.title}</td>
+                  <td className="px-4 py-2 text-sm">
+                    <button
+                      className="text-blue-600 hover:underline"
+                      onClick={() => {
+                        setDescContent(task.description);
+                        setDescDialogOpen(true);
+                      }}
+                    >
+                      Xem chi tiết
+                    </button>
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {task.assignedTo?.name || task.assignedTo?.email || 'Chưa giao'}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap">{task.dueDate}</td>
+                  <td className="px-4 py-2 capitalize whitespace-nowrap">{task.status}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <button
+                      className="text-red-600 hover:underline text-sm"
+                      onClick={() => handleDeleteTask(task.id)}
+                    >
+                      Xoá
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+
         </>
       )}
 
       {/* Dialog */}
       {openDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md w-full max-w-md shadow-lg">
+          <div className="bg-white p-6 rounded-md w-full max-w-xl shadow-lg">
+
             <h3 className="text-lg font-semibold mb-4">
               {selectedIntern ? `Giao task cho ${selectedIntern.name}` : 'Tạo task mới'}
             </h3>
@@ -300,7 +330,7 @@ export default function MentorDashboard() {
                     type="text"
                     placeholder="Tiêu đề"
                     ref={titleRef}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-gray-300 rounded px-3 py-2 outline-none"
                   />
                   <input
                     type="date"
@@ -342,19 +372,25 @@ export default function MentorDashboard() {
                             className="bg-blue-500 text-white px-2 py-1 text-sm rounded"
                             onClick={async () => {
                               try {
-                                await api.post(`/mentor/tasks/reuse`, {
-                                  taskId: task.id,
+                                await api.patch(`/mentor/tasks/${task.id}/assign`, {
                                   internId: selectedIntern.id,
                                 });
-                                alert('Đã giao lại task!');
+                                queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+                                alert('Đã giao task!');
+                                setMyTasks((prev) => prev.filter((t) => t.id !== task.id));
+                                if (tab === 'tasks') {
+                                  const updated = await api.get('/mentor/tasks');
+                                  setMyTasks(updated.data);
+                                }
                                 setOpenDialog(false);
                                 fetchTasksForIntern(selectedIntern.id);
                               } catch {
-                                alert('Lỗi khi giao lại task!');
+                                alert('Lỗi khi giao task!');
                               }
                             }}
+
                           >
-                            Giao lại
+                            Giao task
                           </button>
                         </div>
                       ))
@@ -366,6 +402,121 @@ export default function MentorDashboard() {
           </div>
         </div>
       )}
+      {taskModalIntern && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
+
+            {(() => {
+              const internTasks = tasksByIntern[taskModalIntern.id] || [];
+              var filteredInternTasks = internTasks.filter(task =>
+                `${task.title} ${task.description} ${task.status}`
+                  .toLowerCase()
+                  .includes(internTaskSearch.toLowerCase())
+              );
+              return (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">
+                      Task của Intern: {taskModalIntern.name}
+                    </h3>
+                    <button
+                      className="text-sm text-gray-500 hover:underline"
+                      onClick={() => setTaskModalIntern(null)}
+                    >
+                      Đóng
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Tìm task theo tiêu đề, mô tả, trạng thái..."
+                    value={internTaskSearch}
+                    onChange={(e) => setInternTaskSearch(e.target.value)}
+                    className="mb-4 border border-gray-300 rounded px-3 py-2 w-full outline-none"
+                  />
+
+                  {/* Hiển thị bảng task */}
+                  {filteredInternTasks.length > 0 ? (
+                    <table className="w-full table-auto border-collapse border border-gray-300">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-gray-300 p-2">Tiêu đề</th>
+                          <th className="border border-gray-300 p-2">Mô tả</th>
+                          <th className="border border-gray-300 p-2">Hạn</th>
+                          <th className="border border-gray-300 p-2">Trạng thái</th>
+                          <th className="border border-gray-300 p-2">Hành động</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredInternTasks.map((task) => (
+                          <tr key={task.id}>
+                            <td className="border border-gray-300 p-2">{task.title}</td>
+                            <td className="px-4 py-2 text-sm">
+                              <button
+                                className="text-blue-600 hover:underline"
+                                onClick={() => {
+                                  setDescContent(task.description);
+                                  setDescDialogOpen(true);
+                                }}
+                              >
+                                Xem chi tiết
+                              </button>
+                            </td>
+                            <td className="border border-gray-300 p-2">{task.dueDate}</td>
+                            <td className="border border-gray-300 p-2 capitalize">{task.status}</td>
+                            <td className="border border-gray-300 p-2 space-x-2">
+                              {task.status === 'in_progress' && (
+                                <button
+                                  className="text-blue-600 hover:underline text-sm"
+                                  onClick={async () => {
+                                    try {
+                                      await api.patch(`/mentor/tasks/${task.id}/complete`);
+                                      fetchTasksForIntern(taskModalIntern.id);
+                                      queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+                                    } catch {
+                                      alert('Lỗi khi hoàn thành task!');
+                                    }
+                                  }}
+                                >
+                                  Hoàn thành
+                                </button>
+                              )}
+                              <button
+                                className="text-red-600 hover:underline text-sm"
+                                onClick={async () => {
+                                  const confirm = window.confirm('Bạn có chắc muốn xoá task này?');
+                                  if (!confirm) return;
+
+                                  try {
+                                    await api.delete(`/mentor/tasks/${task.id}`);
+                                    fetchTasksForIntern(taskModalIntern.id);
+                                  } catch {
+                                    alert('Lỗi khi xoá task!');
+                                  }
+                                }}
+                              >
+                                Xoá
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">Không tìm thấy task phù hợp.</p>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      <DescriptionViewerDialog
+        open={descDialogOpen}
+        onClose={() => setDescDialogOpen(false)}
+        description={descContent}
+      />
     </div>
   );
 }

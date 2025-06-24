@@ -1,7 +1,9 @@
-// hooks/useAuth.ts
-import { useContext } from "react";
-import { AuthContext } from "../context/AuthProvider";
-
-const useAuth = () => useContext(AuthContext);
-
-export default useAuth;
+export const useAuth = () => {
+  const token = sessionStorage.getItem('accessToken');
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+};

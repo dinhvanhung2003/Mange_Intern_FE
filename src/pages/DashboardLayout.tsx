@@ -8,6 +8,8 @@ import FloatingChat from "./Chat/FloatingChat";
 import Snackbar from "@mui/material/Snackbar";
 import api from "../utils/axios";
 import NotificationBell from "../components/Ring";
+import Submenu from "../components/SubMenu";
+import SidebarLink from "../components/SidebarLink";
 const socket = require("socket.io-client")("http://localhost:3000");
 
 interface TokenPayload {
@@ -27,7 +29,7 @@ export default function DashboardLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
-
+  const [submenuOpen, setSubmenuOpen] = useState(false);
   const getRoleFromToken = (): string => {
     const token = sessionStorage.getItem("accessToken");
     if (!token) return "";
@@ -50,6 +52,9 @@ export default function DashboardLayout() {
       setLoading(false);
     }
   }, [navigate]);
+  useEffect(() => {
+    setSubmenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (role === "intern" && 'serviceWorker' in navigator && 'PushManager' in window) {
@@ -99,9 +104,6 @@ export default function DashboardLayout() {
           console.error(' Đăng ký Push Notification thất bại:', err);
         }
       };
-
-
-
       const urlBase64ToUint8Array = (base64String: string) => {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding)
@@ -118,9 +120,6 @@ export default function DashboardLayout() {
       registerServiceWorkerAndSubscribe();
     }
   }, [role]);
-
-
-
 
   useEffect(() => {
     if (role === "intern") {
@@ -189,72 +188,73 @@ export default function DashboardLayout() {
       </div>
 
       {/* Sidebar */}
-      <div
-        className={`fixed sm:static top-0 left-0 h-full bg-gray-900 text-white p-4 space-y-6 z-40 w-64 transform transition-transform duration-200 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
-          }`}
-      >
-        <div className="text-xl font-bold flex">
-          <img src={logo} className="w-10 inline-block mr-2" alt="Logo" />
-          <div>
-            UTTAR <br /> PRADESH <br /> TIMES
+      <div className={`fixed sm:static top-0 left-0 h-full bg-[#1c1c1e] text-white p-4 flex flex-col justify-between z-40 w-64 transform transition-transform duration-200 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"}`}>
+        {/* Logo */}
+        <div>
+          <div className="flex flex-row items-center justify-center mb-10">
+            <img src={logo} alt="Logo" className="w-12 h-12 mb-2" />
+            <div className="text-left font-bold leading-tight items-start text-xl">
+              UTTAR<br />PRADESH<br />TIMES
+            </div>
           </div>
+          {/* Navigation */}
+          <nav className="space-y-4">
+            <SidebarLink to="/dashboard" label="Dashboard" icon={icon_dashboard} currentPath={location.pathname} />
+
+            {role === "admin" && (
+              <>
+                <SidebarLink to="/dashboard/users" label="User Management" icon={icon_dashboard} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/admin/tasks" label="Task Management" icon={icon_dashboard} currentPath={location.pathname} />
+              </>
+            )}
+
+            {role === "intern" && (
+              <>
+                <SidebarLink to="/dashboard/interns/profile" label="Intern Profile" icon={icon_dashboard} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/interns/my-tasks" label="My Tasks" icon={icon_dashboard} currentPath={location.pathname} />
+              </>
+            )}
+
+            {role === "mentor" && (
+              <>
+                <Submenu
+                  label="Intern Management"
+                  icon={icon_dashboard}
+                  routes={[
+                    { label: "Quản lý Intern", to: "/dashboard/interns?tab=interns" },
+                    { label: "Quản lý Task", to: "/dashboard/interns?tab=tasks" }
+                  ]}
+                  submenuOpen={submenuOpen}
+                  setSubmenuOpen={setSubmenuOpen}
+                  currentPath={location.pathname}
+                />
+
+
+                {/* <SidebarLink
+                  to="/dashboard/interns"
+                  label="Intern Management"
+                  icon={icon_dashboard}
+                  currentPath={location.pathname}
+                /> */}
+              </>
+            )}
+
+          </nav>
         </div>
-        <nav className="space-y-4">
-          <Link to="/dashboard" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-            <img src={icon_dashboard} alt="Dashboard" />
-            <p>Dashboard</p>
-          </Link>
 
-          {role === "admin" && (
-            <>
-              <Link to="/dashboard/users" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-                <img src={icon_dashboard} alt="User Management" />
-                <p>User Management</p>
-              </Link>
-              <Link to="/dashboard/admin/tasks" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-                <img src={icon_dashboard} alt="Task Management" />
-                <p>Task Management</p>
-              </Link>
-            </>
-          )}
-
-          {role === "intern" && (
-            <>
-              <Link to="/dashboard/interns/profile" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-                <img src={icon_dashboard} alt="Intern Profile" />
-                <p>Intern Profile</p>
-              </Link>
-              <Link to="/dashboard/interns/my-tasks" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-                <img src={icon_dashboard} alt="My Tasks" />
-                <p>My Tasks</p>
-              </Link>
-            </>
-          )}
-
-          {role === "mentor" && (
-            <Link to="/dashboard/interns" className="flex items-center space-x-2 hover:text-blue-400 flex-col cursor-pointer">
-              <img src={icon_dashboard} alt="Intern Management" />
-              <p>Intern Management</p>
-            </Link>
-          )}
-        </nav>
-
-        <div className="flex items-center mx-auto justify-center">
-          <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full" />
-        </div>
-        <div className="text-center">
-          <button
-            onClick={handleLogout}
-            className="mt-auto text-sm text-gray-300 hover:text-red-400"
-          >
+        {/* Avatar + Logout */}
+        <div className="text-center space-y-2">
+          <img src={avatar} alt="Avatar" className="w-10 h-10 mx-auto rounded-full border border-orange-400" />
+          <button onClick={handleLogout} className="text-sm text-gray-300 hover:text-red-400">
             Logout
           </button>
         </div>
       </div>
 
-
       <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
-        <Outlet />
+        {/* <div className="flex-1 p-6 overflow-y-auto bg-gray-100 ml-64 transition-all duration-200"> */}
+          <Outlet />
+        {/* </div> */}
         {(role === "intern" || role === "mentor") && <FloatingChat />}
         <Snackbar
           open={!!taskNotification}
@@ -275,3 +275,25 @@ export default function DashboardLayout() {
     </div>
   );
 }
+
+
+// export function SidebarLink({ to, label, icon, currentPath }: { to: string, label: string, icon: string, currentPath: string }) {
+//   const isActive = currentPath === to;
+
+//   return (
+//     <Link
+//       to={to}
+//       className={`flex flex-col items-center justify-center px-4 py-5 rounded-xl transition hover:bg-gray-800 ${isActive ? 'bg-gray-800' : ''
+//         }`}
+//     >
+//       <img src={icon} alt={label} className="w-7 h-7 mb-2" />
+//       <span className={`text-base transition font-normal ${isActive ? 'font-semibold' : 'hover:font-semibold'}`}>
+//         {label}
+//       </span>
+//     </Link>
+//   );
+// }
+
+
+
+
