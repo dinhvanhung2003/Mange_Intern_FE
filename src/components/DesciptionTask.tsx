@@ -20,7 +20,7 @@ const DescriptionViewerDialog: React.FC<DescriptionViewerDialogProps> = ({ open,
             Đóng
           </button>
         </div>
-        <div className="prose max-w-none [&_img]:rounded [&_img]:mx-auto">
+       <div className="prose max-w-none [&_img]:rounded">
           <div dangerouslySetInnerHTML={{ __html: description }} />
         </div>
       </div>

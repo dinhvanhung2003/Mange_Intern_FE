@@ -1,149 +1,82 @@
-import {
-  useEditor,
-  EditorContent,
-} from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import TextStyle from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
-import TextAlign from '@tiptap/extension-text-align';
-import Image from '@tiptap/extension-image';
-
-import { useImperativeHandle, forwardRef, useRef } from 'react';
-import {
-  MdFormatBold,
-  MdFormatItalic,
-  MdFormatUnderlined,
-  MdFormatColorText,
-  MdFormatAlignLeft,
-  MdFormatAlignCenter,
-  MdFormatAlignRight,
-  MdCode,
-} from 'react-icons/md';
-import { FaImage } from 'react-icons/fa';
-
-interface RichTextEditorProps {
-  initialContent?: string;
-  taskId?: number;
-}
+import { Editor } from '@tinymce/tinymce-react';
+import { useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
 
 export interface RichTextEditorRef {
   getHTML: () => string;
   setHTML: (html: string) => void;
 }
 
-const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
-  ({ initialContent = '', taskId }, ref) => {
-    const editor = useEditor({
-      extensions: [
-        StarterKit,
-        Underline,
-        TextStyle,
-        Color,
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        Image,
-      ],
-      content: initialContent,
-    });
+interface RichTextEditorProps {
+  initialContent?: string;
+}
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
+  ({ initialContent = '' }, ref) => {
+    const editorRef = useRef<any>(null);
 
     useImperativeHandle(ref, () => ({
-      getHTML: () => editor?.getHTML() || '',
+      getHTML: () => editorRef.current?.getContent() || '',
       setHTML: (html: string) => {
-        editor?.commands.setContent(html || '');
+        if (editorRef.current) {
+          editorRef.current.setContent(html || '');
+        }
       },
     }));
 
-    const handleUploadImage = async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (taskId) formData.append('taskId', String(taskId));
-
-      try {
-        const res = await fetch('http://localhost:3000/tasks/upload-image', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          alert(`Upload thất bại: ${err.message}`);
-          return;
-        }
-
-        const data = await res.json();
-        if (data.url) {
-          editor?.chain().focus().setImage({ src: data.url }).run();
-        } else {
-          alert('Không nhận được URL ảnh.');
-        }
-      } catch (err) {
-        console.error('Lỗi upload:', err);
-        alert('Lỗi upload ảnh!');
+    useEffect(() => {
+      if (editorRef.current && initialContent) {
+        editorRef.current.setContent(initialContent);
       }
-    };
-
-    const handleImageClick = () => {
-      fileInputRef.current?.click();
-    };
-
-    if (!editor) return null;
+    }, [initialContent]);
 
     return (
-      <div className="border rounded-md">
-        <input
-          type="file"
-          accept="image/*"
-          hidden
-          ref={fileInputRef}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleUploadImage(file);
-          }}
-        />
+      <Editor
+       apiKey="emd7v129vz8b7yfwvfy1xb9308sg7kim8jsu1cncwpo54wbl"
+        onInit={(evt, editor) => (editorRef.current = editor)}
+        initialValue={initialContent}
+        init={{
+          height: 300,
+          menubar: false,
+          plugins: [
+            'image',
+            'advlist autolink lists link image charmap preview anchor',
+            'searchreplace visualblocks code fullscreen',
+            'insertdatetime media table paste help wordcount',
+          ],
+          toolbar:
+            'undo redo | formatselect | bold italic underline | \
+            forecolor backcolor | alignleft aligncenter alignright | \
+            bullist numlist outdent indent | removeformat | help | image',
+          image_title: true,
+          automatic_uploads: true,
+          file_picker_types: 'image',
+          file_picker_callback: (callback:any) => {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
 
-        <div className="flex flex-wrap gap-1 p-2 border-b bg-gray-50">
-          <button onClick={() => editor.chain().focus().toggleBold().run()} className="toolbar-btn">
-            <MdFormatBold size={20} />
-          </button>
-          <button onClick={() => editor.chain().focus().toggleItalic().run()} className="toolbar-btn">
-            <MdFormatItalic size={20} />
-          </button>
-          <button onClick={() => editor.chain().focus().toggleUnderline().run()} className="toolbar-btn">
-            <MdFormatUnderlined size={20} />
-          </button>
-          <button className="toolbar-btn flex items-center gap-1">
-            <MdFormatColorText size={20} />
-            <input
-              type="color"
-              className="w-6 h-6 cursor-pointer"
-              onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-            />
-          </button>
-          <button onClick={() => editor.chain().focus().setTextAlign('left').run()} className="toolbar-btn">
-            <MdFormatAlignLeft size={20} />
-          </button>
-          <button onClick={() => editor.chain().focus().setTextAlign('center').run()} className="toolbar-btn">
-            <MdFormatAlignCenter size={20} />
-          </button>
-          <button onClick={() => editor.chain().focus().setTextAlign('right').run()} className="toolbar-btn">
-            <MdFormatAlignRight size={20} />
-          </button>
-          <button onClick={() => editor.chain().focus().toggleCodeBlock().run()} className="toolbar-btn">
-            <MdCode size={20} />
-          </button>
-          <button onClick={handleImageClick} className="toolbar-btn" title="Tải ảnh từ máy">
-            <FaImage size={18} />
-          </button>
-        </div>
+                const res = await fetch('http://localhost:3000/tasks/upload-image', {
+                  method: 'POST',
+                  body: formData,
+                });
 
-        <EditorContent
-          editor={editor}
-          className="editor-content min-h-[150px] p-2 w-full"
-          style={{ width: '100%' }}
-        />
-      </div>
+                const data = await res.json();
+                if (data?.url) {
+                  callback(data.url, { alt: file.name });
+                } else {
+                  alert('Tải ảnh thất bại');
+                }
+              }
+            };
+            input.click();
+          },
+        }}
+      />
     );
   }
 );

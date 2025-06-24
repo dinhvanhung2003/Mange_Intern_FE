@@ -28,23 +28,41 @@ export default function MentorDashboard() {
   const [internTaskSearch, setInternTaskSearch] = useState('');
   const queryClient = useQueryClient();
   const [debouncedTaskSearch] = useDebounce(taskSearch, 300);
+
+
+  // const [search, setSearch] = useState('');
+const [debouncedSearch] = useDebounce(search, 300);
+
+
   //paging 
   const [page, setPage] = useState(1);
-const limit = 10; // số task trên mỗi trang
+  const limit = 10; // số task trên mỗi trang
   const { data: interns = [] } = useQuery({
-    queryKey: ['mentorInterns'],
-    queryFn: () => api.get('/mentor/interns').then(res => res.data),
-    staleTime: 5 * 60 * 1000,
-  });
+  queryKey: ['mentorInterns', debouncedSearch],
+  queryFn: () =>
+    api
+      .get('/mentor/interns', {
+        params: { search: debouncedSearch },
+      })
+      .then((res) => res.data),
+  staleTime: 5 * 60 * 1000,
+});
+
 
   const { data: tasks = [], refetch: refetchTasks } = useQuery({
     queryKey: ['mentorTasks', debouncedTaskSearch],
-    queryFn: () =>
-      api.get('mentor/tasks', { params: { title: debouncedTaskSearch } }).then(res => res.data),
-
+    queryFn: async () => {
+      const res = await api.get('mentor/tasks', {
+        params: { title: debouncedTaskSearch },
+      });
+      // console.log('response:', res.data);
+      return res.data.data;
+    },
     enabled: tab === 'tasks',
     staleTime: 5 * 60 * 1000,
   });
+
+
 
 
   useEffect(() => {
@@ -131,10 +149,10 @@ const limit = 10; // số task trên mỗi trang
     }
   };
 
-  const filteredInterns = interns.filter((i: any) =>
-    `${i.name} ${i.email}`.toLowerCase().includes(search.toLowerCase())
-  );
-
+  // const filteredInterns = interns.filter((i: any) =>
+  //   `${i.name} ${i.email}`.toLowerCase().includes(search.toLowerCase())
+  // );
+const filteredInterns = interns;
   const filteredTasks = tasks.filter((t: any) =>
     `${t.title} ${t.assignedTo?.name || ''}`.toLowerCase().includes(taskSearch.toLowerCase())
   );
