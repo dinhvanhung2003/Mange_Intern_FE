@@ -28,6 +28,9 @@ export default function UserManagement() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
+const [internSearch, setInternSearch] = useState('');
+const [showDropdown, setShowDropdown] = useState(false);
+
   const [assignForm, setAssignForm] = useState({
     internIds: [] as string[],
     mentorId: '',
@@ -101,27 +104,27 @@ export default function UserManagement() {
       }
     }
   };
-const internOptions = useMemo(() => {
-  return internMentorData.data
-    .filter((u: any) => u.type === 'intern')
-    .map((u: any) => ({
-      value: u.id.toString(),
-      label: `${u.name} (${u.email})`,
-    }));
-}, [internMentorData.data]);
+  const internOptions = useMemo(() => {
+    return internMentorData.data
+      .filter((u: any) => u.type === 'intern')
+      .map((u: any) => ({
+        value: u.id.toString(),
+        label: `${u.name} (${u.email})`,
+      }));
+  }, [internMentorData.data]);
 
 
 
 
 
- const mentorOptions = useMemo(() => {
-  return internMentorData.data
-    .filter((u: any) => u.type === 'mentor')
-    .map((u: any) => ({
-      value: u.id.toString(),
-      label: `${u.name} (${u.email})`,
-    }));
-}, [internMentorData.data]);
+  const mentorOptions = useMemo(() => {
+    return internMentorData.data
+      .filter((u: any) => u.type === 'mentor')
+      .map((u: any) => ({
+        value: u.id.toString(),
+        label: `${u.name} (${u.email})`,
+      }));
+  }, [internMentorData.data]);
 
 
 
@@ -177,67 +180,141 @@ const internOptions = useMemo(() => {
       ) : tab === 'assignment' ? (
         <>
           {/* Assignment Form */}
-          <div className="mb-4 flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Interns</label>
-           <Select
-  isMulti
-  options={internOptions}
-  value={internOptions.filter((opt:any) => assignForm.internIds.includes(opt.value))}
-  onChange={(selected) =>
-    setAssignForm({ ...assignForm, internIds: selected.map((s) => s.value) })
-  }
-/>
+          <div className="w-full bg-white border rounded-xl shadow p-6 mb-6">
+  <h3 className="text-lg font-semibold mb-4 text-blue-800">Gán Interns cho Mentor</h3>
 
-            </div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {/* Intern Select/Search */}
+    <div className="col-span-1">
+      <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Interns</label>
+      <div className="relative">
+        <div
+          className="border rounded px-2 py-1 flex flex-wrap gap-1 items-center min-h-[40px] cursor-text focus-within:ring-2 focus-within:ring-blue-400"
+          onClick={() => setShowDropdown(true)}
+        >
+          {assignForm.internIds.map((id) => {
+            const intern = assignableInterns.find((u: any) => u.id.toString() === id);
+            if (!intern) return null;
+            return (
+              <div
+                key={id}
+                className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
+              >
+                <span>{intern.name}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAssignForm({
+                      ...assignForm,
+                      internIds: assignForm.internIds.filter((i) => i !== id),
+                    });
+                  }}
+                  className="ml-1 text-blue-600 hover:text-red-600"
+                >
+                  &times;
+                </button>
+              </div>
+            );
+          })}
+          <input
+            type="text"
+            className="flex-1 min-w-[100px] px-1 py-1 outline-none text-sm"
+            placeholder="Tìm intern..."
+            value={internSearch}
+            onChange={(e) => setInternSearch(e.target.value)}
+            onFocus={() => setShowDropdown(true)}
+          />
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Mentor</label>
-             <Select
-  options={mentorOptions}
-  value={mentorOptions.find((opt:any) => opt.value === assignForm.mentorId)}
-  onChange={(selected) =>
-    setAssignForm({ ...assignForm, mentorId: selected?.value || '' })
-  }
-/>
-            </div>
+        {showDropdown && (
+          <ul className="absolute z-10 bg-white border rounded mt-1 w-full max-h-40 overflow-y-auto shadow">
+            {assignableInterns
+              .filter(
+                (u: any) =>
+                  !assignForm.internIds.includes(u.id.toString()) &&
+                  `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
+              )
+              .map((u: any) => (
+                <li
+                  key={u.id}
+                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm"
+                  onClick={() => {
+                    setAssignForm((prev) => ({
+                      ...prev,
+                      internIds: [...prev.internIds, u.id.toString()],
+                    }));
+                    setInternSearch('');
+                    setShowDropdown(true);
+                  }}
+                >
+                  {u.name} ({u.email})
+                </li>
+              ))}
+            {assignableInterns.filter(
+              (u: any) =>
+                !assignForm.internIds.includes(u.id.toString()) &&
+                `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
+            ).length === 0 && (
+              <li className="px-3 py-2 text-gray-500 italic text-sm">Không tìm thấy intern</li>
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <input
-                type="date"
-                className="border rounded px-2 py-1"
-                value={assignForm.startDate}
-                onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })}
-              />
-            </div>
+    {/* Mentor Select */}
+    <div className="col-span-1">
+      <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Mentor</label>
+      <Select
+        options={mentorOptions}
+        value={mentorOptions.find((opt: any) => opt.value === assignForm.mentorId)}
+        onChange={(selected) =>
+          setAssignForm({ ...assignForm, mentorId: selected?.value || '' })
+        }
+      />
+    </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              <input
-                type="date"
-                className="border rounded px-2 py-1"
-                value={assignForm.endDate}
-                onChange={(e) => setAssignForm({ ...assignForm, endDate: e.target.value })}
-              />
-            </div>
+    {/* Date Pickers */}
+    <div className="col-span-1">
+      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+      <input
+        type="date"
+        className="w-full border rounded px-3 py-1 text-sm"
+        value={assignForm.startDate}
+        onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })}
+      />
+    </div>
+    <div className="col-span-1">
+      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+      <input
+        type="date"
+        className="w-full border rounded px-3 py-1 text-sm"
+        value={assignForm.endDate}
+        onChange={(e) => setAssignForm({ ...assignForm, endDate: e.target.value })}
+      />
+    </div>
+  </div>
 
-            <button
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              onClick={async () => {
-                try {
-                  await api.post('/admin/assignments', assignForm);
-                  await fetchAssignments();
-                  alert('Gán thành công!');
-                  setAssignForm({ internIds: [], mentorId: '', startDate: '', endDate: '' });
-                } catch (err: any) {
-                  alert(`Gán thất bại: ${err.response?.data?.message || err.message}`);
-                }
-              }}
-            >
-              GÁN INTERNS
-            </button>
-          </div>
+  {/* Submit Button */}
+  <div className="mt-6">
+    <button
+      className="bg-blue-500 hover:bg-green-700 text-white font-medium px-5 py-2 rounded-lg shadow transition"
+      onClick={async () => {
+        try {
+          await api.post('/admin/assignments', assignForm);
+          await fetchAssignments();
+          alert('Gán thành công!');
+          setAssignForm({ internIds: [], mentorId: '', startDate: '', endDate: '' });
+        } catch (err: any) {
+          alert(`Gán thất bại: ${err.response?.data?.message || err.message}`);
+        }
+      }}
+    >
+      GÁN INTERNS
+    </button>
+  </div>
+</div>
+
 
           {/* Assignment Table */}
           <table className="w-full text-sm border mt-4">

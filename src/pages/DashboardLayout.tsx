@@ -163,7 +163,7 @@ export default function DashboardLayout() {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="flex h-screen relative">
+   <div className="flex h-screen overflow-hidden">
       {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
         <div
@@ -188,7 +188,8 @@ export default function DashboardLayout() {
       </div>
 
       {/* Sidebar */}
-      <div className={`fixed sm:static top-0 left-0 h-full bg-[#1c1c1e] text-white p-4 flex flex-col justify-between z-40 w-64 transform transition-transform duration-200 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"}`}>
+    <div className={`fixed sm:static top-0 left-0 h-full bg-[#1c1c1e] text-white p-4 flex flex-col justify-between z-40 w-64 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0`}>
+
         {/* Logo */}
         <div>
           <div className="flex flex-row items-center justify-center mb-10">
@@ -251,10 +252,13 @@ export default function DashboardLayout() {
         </div>
       </div>
 
-      <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
-        {/* <div className="flex-1 p-6 overflow-y-auto bg-gray-100 ml-64 transition-all duration-200"> */}
-          <Outlet />
-        {/* </div> */}
+   <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
+
+
+      
+  <Outlet />
+
+
         {(role === "intern" || role === "mentor") && <FloatingChat />}
         <Snackbar
           open={!!taskNotification}
