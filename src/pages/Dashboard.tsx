@@ -34,7 +34,7 @@ export default function InternDashboard() {
       <h1 className="text-2xl font-medium text-[#243874] mb-4">Dashboard</h1>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
         <StatusCard
-          iconPath="/icons/all.png"
+          iconPath={iconComplete}
           label="Total"
           value={total}
           bgColor="bg-gray-100"
@@ -61,13 +61,13 @@ export default function InternDashboard() {
           bgColor="bg-blue-100"
           textColor="text-blue-800"
         />
-        <StatusCard
+        {/* <StatusCard
           iconPath={iconHold}
           label="Hold/Reject"
           value={hold}
           bgColor="bg-red-100"
           textColor="text-red-800"
-        />
+        /> */}
       </div>
     </div>
   );

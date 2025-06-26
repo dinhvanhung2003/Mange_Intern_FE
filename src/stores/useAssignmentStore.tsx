@@ -16,6 +16,7 @@ interface AssignmentStore {
   loading: boolean;
   hasFetched: boolean;
   fetchAssignment: () => Promise<void>;
+   clearAssignment: () => void;
 }
 
 export const useAssignmentStore = create<AssignmentStore>()(
@@ -37,7 +38,18 @@ export const useAssignmentStore = create<AssignmentStore>()(
       } finally {
         set({ loading: false }, false, 'assignment/loaded');
       }
-    }
+    },
+    clearAssignment: () =>
+      set(
+        {
+          assignment: null,
+          hasFetched: false,
+          loading: false,
+        },
+        false,
+        'assignment/cleared'
+      ),
+    
   }))
 );
 

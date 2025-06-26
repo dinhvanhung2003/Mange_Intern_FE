@@ -27,11 +27,11 @@ function App() {
 //       });
 //   }
 // }, []);
- const { fetchAssignment } = useAssignmentStore();
+//  const { fetchAssignment } = useAssignmentStore();
 
-  useEffect(() => {
-    fetchAssignment(); 
-  }, []);
+//   useEffect(() => {
+//     fetchAssignment(); 
+//   }, []);
   return (
     <BrowserRouter>
       <Routes>

@@ -28,8 +28,24 @@ export default function UserManagement() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-const [internSearch, setInternSearch] = useState('');
-const [showDropdown, setShowDropdown] = useState(false);
+  const [internSearch, setInternSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+
+
+
+   // thong bao toast 
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+
+  // ham show toast
+  const showToastMessage = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000); // tự ẩn sau 3s
+  };
+
+
 
   const [assignForm, setAssignForm] = useState({
     internIds: [] as string[],
@@ -181,139 +197,139 @@ const [showDropdown, setShowDropdown] = useState(false);
         <>
           {/* Assignment Form */}
           <div className="w-full bg-white border rounded-xl shadow p-6 mb-6">
-  <h3 className="text-lg font-semibold mb-4 text-blue-800">Gán Interns cho Mentor</h3>
+            <h3 className="text-lg font-semibold mb-4 text-blue-800">Gán Interns cho Mentor</h3>
 
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {/* Intern Select/Search */}
-    <div className="col-span-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Interns</label>
-      <div className="relative">
-        <div
-          className="border rounded px-2 py-1 flex flex-wrap gap-1 items-center min-h-[40px] cursor-text focus-within:ring-2 focus-within:ring-blue-400"
-          onClick={() => setShowDropdown(true)}
-        >
-          {assignForm.internIds.map((id) => {
-            const intern = assignableInterns.find((u: any) => u.id.toString() === id);
-            if (!intern) return null;
-            return (
-              <div
-                key={id}
-                className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
-              >
-                <span>{intern.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAssignForm({
-                      ...assignForm,
-                      internIds: assignForm.internIds.filter((i) => i !== id),
-                    });
-                  }}
-                  className="ml-1 text-blue-600 hover:text-red-600"
-                >
-                  &times;
-                </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Intern Select/Search */}
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Interns</label>
+                <div className="relative">
+                  <div
+                    className="border rounded px-2 py-1 flex flex-wrap gap-1 items-center min-h-[40px] cursor-text focus-within:ring-2 focus-within:ring-blue-400"
+                    onClick={() => setShowDropdown(true)}
+                  >
+                    {assignForm.internIds.map((id) => {
+                      const intern = assignableInterns.find((u: any) => u.id.toString() === id);
+                      if (!intern) return null;
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
+                        >
+                          <span>{intern.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssignForm({
+                                ...assignForm,
+                                internIds: assignForm.internIds.filter((i) => i !== id),
+                              });
+                            }}
+                            className="ml-1 text-blue-600 hover:text-red-600"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <input
+                      type="text"
+                      className="flex-1 min-w-[100px] px-1 py-1 outline-none text-sm"
+                      placeholder="Tìm intern..."
+                      value={internSearch}
+                      onChange={(e) => setInternSearch(e.target.value)}
+                      onFocus={() => setShowDropdown(true)}
+                    />
+                  </div>
+
+                  {showDropdown && (
+                    <ul className="absolute z-10 bg-white border rounded mt-1 w-full max-h-40 overflow-y-auto shadow">
+                      {assignableInterns
+                        .filter(
+                          (u: any) =>
+                            !assignForm.internIds.includes(u.id.toString()) &&
+                            `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
+                        )
+                        .map((u: any) => (
+                          <li
+                            key={u.id}
+                            className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm"
+                            onClick={() => {
+                              setAssignForm((prev) => ({
+                                ...prev,
+                                internIds: [...prev.internIds, u.id.toString()],
+                              }));
+                              setInternSearch('');
+                              setShowDropdown(true);
+                            }}
+                          >
+                            {u.name} ({u.email})
+                          </li>
+                        ))}
+                      {assignableInterns.filter(
+                        (u: any) =>
+                          !assignForm.internIds.includes(u.id.toString()) &&
+                          `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
+                      ).length === 0 && (
+                          <li className="px-3 py-2 text-gray-500 italic text-sm">Không tìm thấy intern</li>
+                        )}
+                    </ul>
+                  )}
+                </div>
               </div>
-            );
-          })}
-          <input
-            type="text"
-            className="flex-1 min-w-[100px] px-1 py-1 outline-none text-sm"
-            placeholder="Tìm intern..."
-            value={internSearch}
-            onChange={(e) => setInternSearch(e.target.value)}
-            onFocus={() => setShowDropdown(true)}
-          />
-        </div>
 
-        {showDropdown && (
-          <ul className="absolute z-10 bg-white border rounded mt-1 w-full max-h-40 overflow-y-auto shadow">
-            {assignableInterns
-              .filter(
-                (u: any) =>
-                  !assignForm.internIds.includes(u.id.toString()) &&
-                  `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
-              )
-              .map((u: any) => (
-                <li
-                  key={u.id}
-                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm"
-                  onClick={() => {
-                    setAssignForm((prev) => ({
-                      ...prev,
-                      internIds: [...prev.internIds, u.id.toString()],
-                    }));
-                    setInternSearch('');
-                    setShowDropdown(true);
-                  }}
-                >
-                  {u.name} ({u.email})
-                </li>
-              ))}
-            {assignableInterns.filter(
-              (u: any) =>
-                !assignForm.internIds.includes(u.id.toString()) &&
-                `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
-            ).length === 0 && (
-              <li className="px-3 py-2 text-gray-500 italic text-sm">Không tìm thấy intern</li>
-            )}
-          </ul>
-        )}
-      </div>
-    </div>
+              {/* Mentor Select */}
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Mentor</label>
+                <Select
+                  options={mentorOptions}
+                  value={mentorOptions.find((opt: any) => opt.value === assignForm.mentorId)}
+                  onChange={(selected) =>
+                    setAssignForm({ ...assignForm, mentorId: selected?.value || '' })
+                  }
+                />
+              </div>
 
-    {/* Mentor Select */}
-    <div className="col-span-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Mentor</label>
-      <Select
-        options={mentorOptions}
-        value={mentorOptions.find((opt: any) => opt.value === assignForm.mentorId)}
-        onChange={(selected) =>
-          setAssignForm({ ...assignForm, mentorId: selected?.value || '' })
-        }
-      />
-    </div>
+              {/* Date Pickers */}
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                <input
+                  type="date"
+                  className="w-full border rounded px-3 py-1 text-sm"
+                  value={assignForm.startDate}
+                  onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })}
+                />
+              </div>
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                <input
+                  type="date"
+                  className="w-full border rounded px-3 py-1 text-sm"
+                  value={assignForm.endDate}
+                  onChange={(e) => setAssignForm({ ...assignForm, endDate: e.target.value })}
+                />
+              </div>
+            </div>
 
-    {/* Date Pickers */}
-    <div className="col-span-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
-      <input
-        type="date"
-        className="w-full border rounded px-3 py-1 text-sm"
-        value={assignForm.startDate}
-        onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })}
-      />
-    </div>
-    <div className="col-span-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
-      <input
-        type="date"
-        className="w-full border rounded px-3 py-1 text-sm"
-        value={assignForm.endDate}
-        onChange={(e) => setAssignForm({ ...assignForm, endDate: e.target.value })}
-      />
-    </div>
-  </div>
-
-  {/* Submit Button */}
-  <div className="mt-6">
-    <button
-      className="bg-blue-500 hover:bg-green-700 text-white font-medium px-5 py-2 rounded-lg shadow transition"
-      onClick={async () => {
-        try {
-          await api.post('/admin/assignments', assignForm);
-          await fetchAssignments();
-          alert('Gán thành công!');
-          setAssignForm({ internIds: [], mentorId: '', startDate: '', endDate: '' });
-        } catch (err: any) {
-          alert(`Gán thất bại: ${err.response?.data?.message || err.message}`);
-        }
-      }}
-    >
-      GÁN INTERNS
-    </button>
-  </div>
-</div>
+            {/* Submit Button */}
+            <div className="mt-6">
+              <button
+                className="bg-blue-500 hover:bg-green-700 text-white font-medium px-5 py-2 rounded-lg shadow transition"
+                onClick={async () => {
+                  try {
+                    await api.post('/admin/assignments', assignForm);
+                    await fetchAssignments();
+                   showToastMessage('Assign success!')
+                    setAssignForm({ internIds: [], mentorId: '', startDate: '', endDate: '' });
+                  } catch (err: any) {
+                    showToastMessage(`Assign fail!: ${err.response?.data?.message || err.message}`);
+                  }
+                }}
+              >
+                GÁN INTERNS
+              </button>
+            </div>
+          </div>
 
 
           {/* Assignment Table */}
@@ -413,27 +429,52 @@ const [showDropdown, setShowDropdown] = useState(false);
           </table>
 
           {/* Pagination */}
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-sm text-gray-600">
-              Trang {page} / {totalPages || 1}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          {/* Pagination - MUI Style Inspired */}
+<div className="flex justify-center items-center gap-1 mt-6 text-sm text-gray-800">
+  <button
+    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+    disabled={page === 1}
+    className="px-2 py-1 hover:underline disabled:text-gray-400"
+  >
+    &lt;
+  </button>
+
+  {[...Array(totalPages)].map((_, i) => {
+    const pg = i + 1;
+    if (pg === 1 || pg === totalPages || (pg >= page - 1 && pg <= page + 1)) {
+      return (
+        <button
+          key={pg}
+          onClick={() => setPage(pg)}
+          className={`w-8 h-8 rounded-full text-sm ${
+            page === pg
+              ? 'bg-blue-600 text-white'
+              : 'hover:bg-gray-100'
+          }`}
+        >
+          {pg}
+        </button>
+      );
+    }
+    if (
+      (pg === page - 2 && page > 4) ||
+      (pg === page + 2 && page < totalPages - 3)
+    ) {
+      return <span key={`dots-${pg}`} className="px-2">...</span>;
+    }
+    return null;
+  })}
+
+  <button
+    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+    disabled={page === totalPages}
+    className="px-2 py-1 hover:underline disabled:text-gray-400"
+  >
+    &gt;
+  </button>
+</div>
+
+
         </>
       )}
 

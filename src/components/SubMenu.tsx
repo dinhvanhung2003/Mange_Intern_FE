@@ -16,19 +16,27 @@ export default function Submenu({
   currentPath: string;
 }) {
   return (
-    <div className="relative">
-      {/* Nút cha dùng SidebarLink */}
-      <SidebarLink
-        to="#" // Không điều hướng
-        label={label}
-        icon={icon}
-        currentPath=""
-        onClick={() => setSubmenuOpen(!submenuOpen)}
-      />
+ 
+  <div className="relative">
+    <SidebarLink
+      to="#"
+      label={label}
+      icon={icon}
+      currentPath=""
+      onClick={() => setSubmenuOpen(!submenuOpen)}
+    />
 
-      {/* Submenu hiển thị bên cạnh */}
-      {submenuOpen && (
-        <div className="absolute top-0 left-full ml-2 bg-[#111] rounded-lg overflow-hidden shadow-md z-30 w-48">
+    {submenuOpen && (
+      // Overlay to detect outside click
+      <div
+        className="fixed inset-0 z-30"
+        onClick={() => setSubmenuOpen(false)}
+      >
+        {/* Submenu */}
+        <div
+          className="absolute top-0 left-64 h-full bg-[#111] w-48 shadow-lg overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="border-b border-gray-700 px-4 py-3 font-semibold">
             {label}
           </div>
@@ -46,7 +54,10 @@ export default function Submenu({
             ))}
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+  </div>
+
+
   );
 }

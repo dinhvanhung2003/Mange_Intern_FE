@@ -10,6 +10,12 @@ import api from "../utils/axios";
 import NotificationBell from "../components/Ring";
 import Submenu from "../components/SubMenu";
 import SidebarLink from "../components/SidebarLink";
+import users from "../assets/siderbars/users.png";
+import tasks from "../assets/siderbars/tasks.png"
+import { queryClient } from "../index"; 
+import {useAssignmentStore} from "../stores/useAssignmentStore";
+
+
 const socket = require("socket.io-client")("http://localhost:3000");
 
 interface TokenPayload {
@@ -27,6 +33,12 @@ export default function DashboardLayout() {
   const [shake, setShake] = useState(false);
   const [savedNotifications, setSavedNotifications] = useState<any[]>([]);
 
+
+  // fetch assigment 
+  const { fetchAssignment } = useAssignmentStore();
+
+
+
   const navigate = useNavigate();
   const location = useLocation();
   const [submenuOpen, setSubmenuOpen] = useState(false);
@@ -43,7 +55,11 @@ export default function DashboardLayout() {
   };
 
   const role = getRoleFromToken();
-
+useEffect(() => {
+  if (role === 'intern') {
+    fetchAssignment();
+  }
+}, [role]);
   useEffect(() => {
     const token = sessionStorage.getItem("accessToken");
     if (!token) {
@@ -157,6 +173,10 @@ export default function DashboardLayout() {
   const handleLogout = () => {
     socket.disconnect();
     sessionStorage.clear();
+    // delete cache
+    queryClient.clear()
+    // delete store 
+    useAssignmentStore.getState().clearAssignment();
     navigate("/login");
   };
 
@@ -204,15 +224,16 @@ export default function DashboardLayout() {
 
             {role === "admin" && (
               <>
-                <SidebarLink to="/dashboard/users" label="User Management" icon={icon_dashboard} currentPath={location.pathname} />
-                <SidebarLink to="/dashboard/admin/tasks" label="Task Management" icon={icon_dashboard} currentPath={location.pathname} />
+
+                <SidebarLink to="/dashboard/users" label="User Management" icon={users} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/admin/tasks" label="Task Management" icon={tasks} currentPath={location.pathname} />
               </>
             )}
 
             {role === "intern" && (
               <>
                 <SidebarLink to="/dashboard/interns/profile" label="Intern Profile" icon={icon_dashboard} currentPath={location.pathname} />
-                <SidebarLink to="/dashboard/interns/my-tasks" label="My Tasks" icon={icon_dashboard} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/interns/my-tasks" label="My Tasks" icon={tasks} currentPath={location.pathname} />
               </>
             )}
 
@@ -256,7 +277,13 @@ export default function DashboardLayout() {
 
 
       
+ <div
+  className={`flex-1 p-6 overflow-y-auto bg-gray-100 transition-all duration-300 ${
+    submenuOpen ? "pl-64" : ""
+  }`}
+>
   <Outlet />
+</div>
 
 
         {(role === "intern" || role === "mentor") && <FloatingChat />}

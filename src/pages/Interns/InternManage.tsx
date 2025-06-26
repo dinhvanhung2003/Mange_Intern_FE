@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import RichTextEditor, { RichTextEditorRef } from '../../components/RichTextEditer';
 import DescriptionViewerDialog from '../../components/DesciptionTask';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import Toast from '../../components/Toast';
 import { useDebounce } from 'use-debounce';
 export default function MentorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,22 +32,37 @@ export default function MentorDashboard() {
 
 
   // const [search, setSearch] = useState('');
-const [debouncedSearch] = useDebounce(search, 300);
+  const [debouncedSearch] = useDebounce(search, 300);
+
+
+
+  // thong bao toast 
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+
+  // ham show toast
+  const showToastMessage = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000); // tự ẩn sau 3s
+  };
+
 
 
   //paging 
   const [page, setPage] = useState(1);
   const limit = 10; // số task trên mỗi trang
   const { data: interns = [] } = useQuery({
-  queryKey: ['mentorInterns', debouncedSearch],
-  queryFn: () =>
-    api
-      .get('/mentor/interns', {
-        params: { search: debouncedSearch },
-      })
-      .then((res) => res.data),
-  staleTime: 5 * 60 * 1000,
-});
+    queryKey: ['mentorInterns', debouncedSearch],
+    queryFn: () =>
+      api
+        .get('/mentor/interns', {
+          params: { search: debouncedSearch },
+        })
+        .then((res) => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
 
 
   const { data: tasks = [], refetch: refetchTasks } = useQuery({
@@ -85,7 +101,7 @@ const [debouncedSearch] = useDebounce(search, 300);
     const description = descEditorRef.current.getHTML();
 
     if (!title || !dueDate) {
-      alert('Vui lòng nhập tiêu đề và hạn hoàn thành!');
+       showToastMessage('Please fill title and due date!');
       return;
     }
     const today = new Date();
@@ -94,7 +110,7 @@ const [debouncedSearch] = useDebounce(search, 300);
     dueDateObj.setHours(0, 0, 0, 0);
 
     if (dueDateObj < today) {
-      alert('Ngày hạn không được nhỏ hơn ngày hôm nay!');
+       showToastMessage('Due date must be today or later!');
       return;
     }
 
@@ -105,7 +121,7 @@ const [debouncedSearch] = useDebounce(search, 300);
         description,
         assignedTo: selectedIntern?.id || null,
       });
-      alert('Đã tạo task thành công!');
+      showToastMessage('Create task successfully!');
       setOpenDialog(false);
       titleRef.current.value = '';
       dateRef.current.value = '';
@@ -114,7 +130,7 @@ const [debouncedSearch] = useDebounce(search, 300);
       if (selectedIntern) fetchTasksForIntern(selectedIntern.id);
     } catch (err) {
       console.error('Lỗi tạo task:', err);
-      alert('Tạo task thất bại!');
+      showToastMessage('Faild create task!');
     }
   };
 
@@ -130,8 +146,9 @@ const [debouncedSearch] = useDebounce(search, 300);
               await api.delete(`/mentor/tasks/${taskId}`);
               queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
               if (taskModalIntern) fetchTasksForIntern(taskModalIntern.id);
+               showToastMessage('Delete task successfully!');
             } catch {
-              alert('Xoá task thất bại!');
+              showToastMessage('Delete task failed!');
             }
           },
         },
@@ -152,7 +169,7 @@ const [debouncedSearch] = useDebounce(search, 300);
   // const filteredInterns = interns.filter((i: any) =>
   //   `${i.name} ${i.email}`.toLowerCase().includes(search.toLowerCase())
   // );
-const filteredInterns = interns;
+  const filteredInterns = interns;
   const filteredTasks = tasks.filter((t: any) =>
     `${t.title} ${t.assignedTo?.name || ''}`.toLowerCase().includes(taskSearch.toLowerCase())
   );
@@ -318,7 +335,11 @@ const filteredInterns = interns;
 
         </>
       )}
-
+      <Toast
+        message={toastMessage}
+        show={showToast}
+        onClose={() => setShowToast(false)}
+      />
       {/* Dialog */}
       {openDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -397,7 +418,7 @@ const filteredInterns = interns;
                                   internId: selectedIntern.id,
                                 });
                                 queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
-                                alert('Đã giao task!');
+                                showToastMessage("Task assigned successfully!");
                                 setMyTasks((prev) => prev.filter((t) => t.id !== task.id));
                                 if (tab === 'tasks') {
                                   const updated = await api.get('/mentor/tasks');
@@ -406,7 +427,7 @@ const filteredInterns = interns;
                                 setOpenDialog(false);
                                 fetchTasksForIntern(selectedIntern.id);
                               } catch {
-                                alert('Lỗi khi giao task!');
+                                 showToastMessage("Task assigned successfully!");
                               }
                             }}
 
@@ -495,7 +516,7 @@ const filteredInterns = interns;
                                       fetchTasksForIntern(taskModalIntern.id);
                                       queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
                                     } catch {
-                                      alert('Lỗi khi hoàn thành task!');
+                                       showToastMessage("Faild complete task!");
                                     }
                                   }}
                                 >
@@ -512,7 +533,7 @@ const filteredInterns = interns;
                                     await api.delete(`/mentor/tasks/${task.id}`);
                                     fetchTasksForIntern(taskModalIntern.id);
                                   } catch {
-                                    alert('Lỗi khi xoá task!');
+                                     showToastMessage("Delete task failed!");
                                   }
                                 }}
                               >
