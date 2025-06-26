@@ -12,8 +12,8 @@ import Submenu from "../components/SubMenu";
 import SidebarLink from "../components/SidebarLink";
 import users from "../assets/siderbars/users.png";
 import tasks from "../assets/siderbars/tasks.png"
-import { queryClient } from "../index"; 
-import {useAssignmentStore} from "../stores/useAssignmentStore";
+import { queryClient } from "../index";
+import { useAssignmentStore } from "../stores/useAssignmentStore";
 
 
 const socket = require("socket.io-client")("http://localhost:3000");
@@ -55,11 +55,11 @@ export default function DashboardLayout() {
   };
 
   const role = getRoleFromToken();
-useEffect(() => {
-  if (role === 'intern') {
-    fetchAssignment();
-  }
-}, [role]);
+  useEffect(() => {
+    if (role === 'intern') {
+      fetchAssignment();
+    }
+  }, [role]);
   useEffect(() => {
     const token = sessionStorage.getItem("accessToken");
     if (!token) {
@@ -183,7 +183,7 @@ useEffect(() => {
   if (loading) return <div>Loading...</div>;
 
   return (
-   <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
         <div
@@ -208,7 +208,7 @@ useEffect(() => {
       </div>
 
       {/* Sidebar */}
-    <div className={`fixed sm:static top-0 left-0 h-full bg-[#1c1c1e] text-white p-4 flex flex-col justify-between z-40 w-64 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0`}>
+      <div className={`fixed sm:static top-0 left-0 h-full bg-[#1c1c1e] text-white p-4 flex flex-col justify-between z-40 w-64 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0`}>
 
         {/* Logo */}
         <div>
@@ -223,12 +223,19 @@ useEffect(() => {
             <SidebarLink to="/dashboard" label="Dashboard" icon={icon_dashboard} currentPath={location.pathname} />
 
             {role === "admin" && (
-              <>
-
-                <SidebarLink to="/dashboard/users" label="User Management" icon={users} currentPath={location.pathname} />
-                <SidebarLink to="/dashboard/admin/tasks" label="Task Management" icon={tasks} currentPath={location.pathname} />
-              </>
+              <Submenu
+                label="Admin Management"
+                icon={icon_dashboard}
+                routes={[
+                  { label: "User Management", to: "/dashboard/users" },
+                  { label: "Task Management", to: "/dashboard/admin/tasks" },
+                ]}
+                submenuOpen={submenuOpen}
+                setSubmenuOpen={setSubmenuOpen}
+                currentPath={location.pathname}
+              />
             )}
+
 
             {role === "intern" && (
               <>
@@ -273,17 +280,16 @@ useEffect(() => {
         </div>
       </div>
 
-   <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
+      <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
 
 
-      
- <div
-  className={`flex-1 p-6 overflow-y-auto bg-gray-100 transition-all duration-300 ${
-    submenuOpen ? "pl-64" : ""
-  }`}
->
-  <Outlet />
-</div>
+
+        <div
+          className={`flex-1 p-6 overflow-y-auto bg-gray-100 transition-all duration-300 ${submenuOpen ? "pl-64" : ""
+            }`}
+        >
+          <Outlet />
+        </div>
 
 
         {(role === "intern" || role === "mentor") && <FloatingChat />}

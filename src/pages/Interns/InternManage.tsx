@@ -8,6 +8,7 @@ import DescriptionViewerDialog from '../../components/DesciptionTask';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from '../../components/Toast';
 import { useDebounce } from 'use-debounce';
+import mammoth from "mammoth";
 export default function MentorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as 'interns' | 'tasks') || 'interns';
@@ -29,17 +30,39 @@ export default function MentorDashboard() {
   const [internTaskSearch, setInternTaskSearch] = useState('');
   const queryClient = useQueryClient();
   const [debouncedTaskSearch] = useDebounce(taskSearch, 300);
+  const BACKEND_URL = "http://localhost:3000";
 
+
+
+
+  const [statusNote, setStatusNote] = useState('');
 
   // const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 300);
 
-
+  // xem bao cao 
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportContent, setReportContent] = useState('');
+  const [reportFile, setReportFile] = useState('');
 
   // thong bao toast 
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
+  // log 
+  const [logHistory, setLogHistory] = useState([]);
+  const [logDialogOpen, setLogDialogOpen] = useState(false);
+
+
+  const handleShowLog = async (taskId: number) => {
+    try {
+      const res = await api.get(`/task-logs/${taskId}`);
+      setLogHistory(res.data.data);
+      setLogDialogOpen(true);
+    } catch (err) {
+      showToastMessage('Không thể tải log');
+    }
+  };
 
   // ham show toast
   const showToastMessage = (msg: string) => {
@@ -48,7 +71,8 @@ export default function MentorDashboard() {
     setTimeout(() => setShowToast(false), 3000); // tự ẩn sau 3s
   };
 
-
+  const [docxPreviewContent, setDocxPreviewContent] = useState('');
+  const [docxDialogOpen, setDocxDialogOpen] = useState(false);
 
   //paging 
   const [page, setPage] = useState(1);
@@ -78,6 +102,33 @@ export default function MentorDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // const handlePreviewDocx = async (fileUrl: string) => {
+  //   try {
+  //     const response = await fetch(fileUrl);
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
+
+  //     const arrayBuffer = await response.arrayBuffer();
+  //     const result = await mammoth.convertToHtml({ arrayBuffer });
+
+  //     if (!result.value) {
+  //       throw new Error("Không thể chuyển đổi nội dung Word.");
+  //     }
+  //     const res = await fetch(fileUrl);
+  //     const contentType = res.headers.get("Content-Type");
+  //     console.log("Content-Type:", contentType);
+
+  //     const text = await res.text();
+  //     console.log("TEXT:", text.slice(0, 300));
+  //     setDocxPreviewContent(result.value);
+  //     setDocxDialogOpen(true);
+  //   } catch (error: any) {
+  //     console.error("Lỗi đọc file Word:", error);
+  //     showToastMessage("Không thể xem file Word.");
+  //   }
+  // };
+
 
 
 
@@ -101,7 +152,7 @@ export default function MentorDashboard() {
     const description = descEditorRef.current.getHTML();
 
     if (!title || !dueDate) {
-       showToastMessage('Please fill title and due date!');
+      showToastMessage('Please fill title and due date!');
       return;
     }
     const today = new Date();
@@ -110,7 +161,7 @@ export default function MentorDashboard() {
     dueDateObj.setHours(0, 0, 0, 0);
 
     if (dueDateObj < today) {
-       showToastMessage('Due date must be today or later!');
+      showToastMessage('Due date must be today or later!');
       return;
     }
 
@@ -146,7 +197,7 @@ export default function MentorDashboard() {
               await api.delete(`/mentor/tasks/${taskId}`);
               queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
               if (taskModalIntern) fetchTasksForIntern(taskModalIntern.id);
-               showToastMessage('Delete task successfully!');
+              showToastMessage('Delete task successfully!');
             } catch {
               showToastMessage('Delete task failed!');
             }
@@ -254,6 +305,7 @@ export default function MentorDashboard() {
                         Xem task
                       </button>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -327,6 +379,7 @@ export default function MentorDashboard() {
                       Xoá
                     </button>
                   </td>
+
                 </tr>
               ))}
             </tbody>
@@ -427,7 +480,7 @@ export default function MentorDashboard() {
                                 setOpenDialog(false);
                                 fetchTasksForIntern(selectedIntern.id);
                               } catch {
-                                 showToastMessage("Task assigned successfully!");
+                                showToastMessage("Task assigned successfully!");
                               }
                             }}
 
@@ -487,6 +540,8 @@ export default function MentorDashboard() {
                           <th className="border border-gray-300 p-2">Hạn</th>
                           <th className="border border-gray-300 p-2">Trạng thái</th>
                           <th className="border border-gray-300 p-2">Hành động</th>
+                          <th className="border border-gray-300 p-2">Báo cáo</th>
+
                         </tr>
                       </thead>
                       <tbody>
@@ -505,24 +560,87 @@ export default function MentorDashboard() {
                               </button>
                             </td>
                             <td className="border border-gray-300 p-2">{task.dueDate}</td>
-                            <td className="border border-gray-300 p-2 capitalize">{task.status}</td>
+                            <td className="border border-gray-300 p-2">
+                              <span
+                                className={`px-2 py-1 text-xs rounded-full font-semibold ${task.status === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : task.status === 'in_progress'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : task.status === 'error'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}
+                              >
+                                {task.status === 'assigned'
+                                  ? 'Chưa nhận'
+                                  : task.status === 'in_progress'
+                                    ? 'Đang làm'
+                                    : task.status === 'completed'
+                                      ? 'Hoàn thành'
+                                      : 'Lỗi'}
+                              </span>
+                            </td>
+
                             <td className="border border-gray-300 p-2 space-x-2">
-                              {task.status === 'in_progress' && (
+                              {task.status === 'in_progress' && (task.submittedText || task.submittedFile) && (
+                                <button
+                                  className="text-orange-600 hover:underline text-sm"
+                                  onClick={async () => {
+                                    const note = prompt('Nhập lý do đánh lỗi (tuỳ chọn):') || ''; // 👈 thêm dòng này
+                                    try {
+                                      await api.patch(`/mentor/tasks/${task.id}/status`, {
+                                        status: 'error',
+                                        note,
+                                      });
+                                      showToastMessage('Đánh lỗi thành công. Task sẽ tự động reset sau 2s...');
+
+                                      setTimeout(async () => {
+                                        try {
+                                          await api.patch(`/mentor/tasks/${task.id}/status`, {
+                                            status: 'assigned',
+                                            note: 'Reset sau khi đánh lỗi', // 👈 hoặc để rỗng
+                                          });
+                                          fetchTasksForIntern(taskModalIntern.id);
+                                          queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+                                          showToastMessage('Task đã được reset lại thành công');
+                                        } catch {
+                                          showToastMessage('Reset task thất bại');
+                                        }
+                                      }, 2000);
+                                    } catch {
+                                      showToastMessage('Lỗi khi đánh lỗi task');
+                                    }
+                                  }}
+
+                                >
+                                  Đánh lỗi (tự reset)
+                                </button>
+                              )}
+
+
+                              {(task.status === 'completed' || task.status === 'error') && (
                                 <button
                                   className="text-blue-600 hover:underline text-sm"
                                   onClick={async () => {
+                                    const note = prompt('Nhập lý do reset task (tuỳ chọn):') || '';
                                     try {
-                                      await api.patch(`/mentor/tasks/${task.id}/complete`);
+                                      await api.patch(`/mentor/tasks/${task.id}/status`, {
+                                        status: 'assigned',
+                                        note,
+                                      });
                                       fetchTasksForIntern(taskModalIntern.id);
                                       queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+                                      showToastMessage('Reset task thành công');
                                     } catch {
-                                       showToastMessage("Faild complete task!");
+                                      showToastMessage('Lỗi khi reset task');
                                     }
                                   }}
+
                                 >
-                                  Hoàn thành
+                                  Reset task
                                 </button>
                               )}
+
                               <button
                                 className="text-red-600 hover:underline text-sm"
                                 onClick={async () => {
@@ -533,13 +651,37 @@ export default function MentorDashboard() {
                                     await api.delete(`/mentor/tasks/${task.id}`);
                                     fetchTasksForIntern(taskModalIntern.id);
                                   } catch {
-                                     showToastMessage("Delete task failed!");
+                                    showToastMessage("Delete task failed!");
                                   }
                                 }}
                               >
                                 Xoá
                               </button>
                             </td>
+                            <td className="border border-gray-300 p-2">
+                              {(task.submittedText || task.submittedFile) ? (
+                                <button
+                                  className="text-blue-600 hover:underline text-sm"
+                                  onClick={() => {
+                                    setReportContent(task.submittedText || '');
+                                    setReportFile(task.submittedFile || '');
+                                    setReportDialogOpen(true);
+                                  }}
+                                >
+                                  Xem báo cáo
+                                </button>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">Chưa nộp</span>
+                              )}
+                            </td>
+                            <button
+                              onClick={() => handleShowLog(task.id)}
+                              className="text-sm text-blue-600 hover:underline"
+                            >
+                              Xem lịch sử
+                            </button>
+
+
                           </tr>
                         ))}
                       </tbody>
@@ -559,6 +701,105 @@ export default function MentorDashboard() {
         onClose={() => setDescDialogOpen(false)}
         description={descContent}
       />
+      {reportDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-md w-full max-w-xl shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Báo cáo của Intern</h3>
+              <button
+                className="text-sm text-gray-500 hover:underline"
+                onClick={() => setReportDialogOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+
+            {reportContent && (
+              <div className="mb-4">
+                <h4 className="font-medium mb-1">Nội dung:</h4>
+                <div className="bg-gray-50 p-3 rounded text-sm text-gray-700 whitespace-pre-wrap border">
+                  {reportContent}
+                </div>
+              </div>
+            )}
+
+            {reportFile && (
+              <div>
+                <h4 className="font-medium mb-1">File đính kèm:</h4>
+                <a
+                  href={`http://localhost:3000/uploads/tasks/${reportFile}`}
+                  download
+                  className="text-blue-600 hover:underline text-sm"
+                >
+                  Tải file Word
+                </a>
+
+
+
+              </div>
+            )}
+
+            {!reportContent && !reportFile && (
+              <p className="italic text-gray-500">Không có nội dung báo cáo.</p>
+            )}
+          </div>
+        </div>
+      )}
+      {docxDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Xem nội dung file Word</h3>
+              <button
+                className="text-sm text-gray-500 hover:underline"
+                onClick={() => setDocxDialogOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+            <div
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: docxPreviewContent }}
+            />
+          </div>
+        </div>
+      )}
+      {logDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-md w-full max-w-xl shadow-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Lịch sử cập nhật trạng thái</h3>
+              <button
+                className="text-sm text-gray-500 hover:underline"
+                onClick={() => setLogDialogOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+
+            {logHistory.length === 0 ? (
+              <p className="text-gray-500 italic">Chưa có lịch sử nào.</p>
+            ) : (
+              <ul className="space-y-3 text-sm">
+                {logHistory.map((log: any, idx) => (
+                  <li key={idx} className="border p-3 rounded">
+                    <p><strong>Người cập nhật:</strong> {log.user?.name || 'Ẩn danh'}</p>
+                    <p><strong>Thời gian:</strong> {new Date(log.createdAt).toLocaleString()}</p>
+                    {/* <p><strong>Trạng thái:</strong> từ <em>{log.fromStatus}</em> → <em>{log.toStatus}</em></p> */}
+                    {log.note && (
+                      <p><strong>Lý do:</strong> {log.note}</p>
+                    )}
+                    {log.message && (
+                      <p className="text-gray-600 italic">{log.message}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
