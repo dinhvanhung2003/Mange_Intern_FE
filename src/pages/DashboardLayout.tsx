@@ -4,7 +4,8 @@ import avatar from "../assets/avatar.png";
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import FloatingChat from "./Chat/FloatingChat";
+// import FloatingChat from "./Chat/FloatingChat";
+import ChatWrapper from "./Chat/ChatWrapper";
 import Snackbar from "@mui/material/Snackbar";
 import api from "../utils/axios";
 import NotificationBell from "../components/Ring";
@@ -292,7 +293,7 @@ export default function DashboardLayout() {
         </div>
 
 
-        {(role === "intern" || role === "mentor") && <FloatingChat />}
+        {(role === "intern" || role === "mentor") && <ChatWrapper />}
         <Snackbar
           open={!!taskNotification}
           autoHideDuration={4000}
