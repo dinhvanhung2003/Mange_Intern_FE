@@ -6,6 +6,9 @@ import UserForm from './UserForm';
 import type { UserType } from './UserForm';
 import Select from 'react-select';
 import { useMemo } from 'react';
+import { useDebounce } from 'use-debounce';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 interface User {
   id: number;
   name: string;
@@ -20,7 +23,7 @@ interface User {
 }
 
 export default function UserManagement() {
-  const [assignments, setAssignments] = useState<any[]>([]);
+  // const [assignments, setAssignments] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'intern' | 'mentor' | 'assignment'>('intern');
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -30,12 +33,40 @@ export default function UserManagement() {
 
   const [internSearch, setInternSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  // const debouncedSearch = useDebounce(userSearch, 500);
+  const [debouncedSearch] = useDebounce(search, 500);
 
+  const [mentorSearch, setMentorSearch] = useState('');
+  const [showMentorDropdown, setShowMentorDropdown] = useState(false);
 
-
-   // thong bao toast 
+  // thong bao toast 
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        internDropdownRef.current &&
+        !internDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+      if (
+        mentorDropdownRef.current &&
+        !mentorDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowMentorDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+
 
 
   // ham show toast
@@ -46,6 +77,21 @@ export default function UserManagement() {
   };
 
 
+
+
+  const mentorDropdownRef = useRef<HTMLDivElement>(null);
+
+  // search o select
+  const [debouncedInternSearch] = useDebounce(internSearch, 300);
+  const [debouncedMentorSearch] = useDebounce(mentorSearch, 300);
+
+
+  const internDropdownRef = useRef<HTMLDivElement>(null);
+
+
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const assignmentLimit = 10;
+  const [debouncedAssignmentSearch] = useDebounce(search, 500);
 
   const [assignForm, setAssignForm] = useState({
     internIds: [] as string[],
@@ -60,20 +106,83 @@ export default function UserManagement() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['users', { tab, page, limit, search }],
+    queryKey: ['users', { tab, page, limit, search: debouncedSearch }],
     queryFn: async () => {
+       console.log(' Fetching users at page:', page); 
       const res = await api.get('/admin/users', {
-        params: { type: tab, page, limit, search },
+        params: {
+          type: tab,
+          page,
+          limit,
+          search: debouncedSearch,
+        },
       });
       return res.data;
     },
     placeholderData: (prev) => prev,
   });
 
+
+  const {
+    data: assignmentPages,
+    isLoading: isLoadingAssignments,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch: refetchAssignments,
+  } = useInfiniteQuery({
+    queryKey: ['assignments', debouncedAssignmentSearch],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.get('/admin/assignments', {
+        params: {
+          search: debouncedAssignmentSearch,
+          page: pageParam,
+          limit: assignmentLimit,
+        },
+      });
+      return res.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.flatMap(p => p.data).length;
+      if (loadedCount >= lastPage.total) return undefined;
+      return allPages.length + 1;
+    },
+    enabled: tab === 'assignment',
+  });
+
+  // tu dong cuon 
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (tab !== 'assignment') return;
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) observer.observe(currentRef);
+
+    return () => {
+      if (currentRef) observer.unobserve(currentRef);
+    };
+  }, [tab, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+
+
+
+  const allAssignments = assignmentPages?.pages.flatMap(p => p.data) || [];
   const users: User[] = usersResponse?.data || [];
   const total = usersResponse?.total || 0;
   const totalPages = Math.ceil(total / limit);
-  const assignedInternIds = new Set(assignments.map((a) => a.intern?.id));
+
   const resolvedType = editingUser?.type || (tab !== 'assignment' ? tab : undefined);
 
   // Dữ liệu user dùng cho assignment 
@@ -88,27 +197,158 @@ export default function UserManagement() {
     enabled: tab === 'assignment',
   });
 
-  const assignableInterns = internMentorData.data.filter(
-    (u: any) => u.type === 'intern' && !assignedInternIds.has(u.id)
+
+
+const mentorLoadMoreRef = useRef<HTMLDivElement | null>(null);
+
+
+
+
+  // 1. Gọi useInfiniteQuery để lấy intern chưa phân công
+  const {
+    data: internPages,
+    fetchNextPage: fetchMoreInterns,
+    hasNextPage: hasMoreInterns,
+    isFetchingNextPage: isFetchingMoreInterns,
+  } = useInfiniteQuery({
+    queryKey: ['interns-unassigned', debouncedInternSearch],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.get('/admin/interns/unassigned', {
+        params: {
+          page: pageParam,
+          limit: 10,
+          search: debouncedInternSearch,
+        },
+      });
+      return {
+        data: res.data,
+        total: res.data.length,
+      };
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.flatMap(p => p.data).length;
+      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+    },
+    enabled: tab === 'assignment',
+  });
+
+
+  const unassignedInterns = useMemo(() =>
+    internPages?.pages?.flatMap(p => p.data) || [],
+    [internPages]);
+
+
+
+  const {
+    data: mentorPages,
+    fetchNextPage: fetchMoreMentors,
+    hasNextPage: hasMoreMentors,
+    isFetchingNextPage: isFetchingMoreMentors,
+  } = useInfiniteQuery({
+    queryKey: ['mentors', debouncedMentorSearch],
+    queryFn: async ({ pageParam = 1 }) => {
+  const res = await api.get('/admin/users', {
+    params: {
+      page: pageParam,
+      limit: 10,
+      search: debouncedMentorSearch,
+      type: 'mentor',
+    },
+  });
+
+  return {
+    data: res.data?.data || [],    
+    total: res.data?.total || 0,   
+  };
+},
+
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.flatMap((p) => p.data).length;
+      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+    },
+    enabled: tab === 'assignment',
+  });
+useEffect(() => {
+  if (!showMentorDropdown || !hasMoreMentors || isFetchingMoreMentors) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting) {
+        fetchMoreMentors();
+      }
+    },
+    { threshold: 1.0 }
   );
+
+  const current = mentorLoadMoreRef.current;
+  if (current) observer.observe(current);
+
+  return () => {
+    if (current) observer.unobserve(current);
+  };
+}, [showMentorDropdown, hasMoreMentors, isFetchingMoreMentors, fetchMoreMentors]);
+
+
+
+
+  const interns = internPages?.pages.flatMap(p => p.data) || [];
+
+
+
+
+
+
+
+
+
+
+
+
+  // intern da co phan cong 
+  const assignedInternIds = useMemo(() => {
+    return (
+      assignmentPages?.pages
+        ?.flatMap((page) =>
+          page.data
+            .map((a: any) => a?.intern?.id)
+            .filter((id: any): id is number => id !== undefined && id !== null)
+            .map((id: any) => id.toString())
+        ) || []
+    );
+  }, [assignmentPages]);
+
+
+  const filteredAssignableInterns = tab === 'assignment'
+    ? internMentorData.data.filter(
+      (u: any) =>
+        u.type === 'intern' &&
+        !assignForm.internIds.includes(u.id.toString()) &&
+        !assignedInternIds.includes(u.id.toString())
+    )
+    : [];
+
+
   const mentors = internMentorData.data.filter((u: any) => u.type === 'mentor');
 
-  const fetchAssignments = async () => {
-    try {
-      const res = await api.get('/admin/assignments');
-      setAssignments(res.data);
-    } catch (err) {
-      console.error('Lỗi tải assignments:', err);
-    }
-  };
+  // const fetchAssignments = async () => {
+  //   try {
+  //     const res = await api.get('/admin/assignments');
+  //    setAssignments(res.data?.data || []);
 
-  useEffect(() => {
-    fetchAssignments();
-  }, []);
+  //   } catch (err) {
+  //     console.error('Lỗi tải assignments:', err);
+  //   }
+  // };
 
-  const filteredAssignments = assignments.filter((a) =>
-    `${a.intern?.name || ''} ${a.mentor?.name || ''}`.toLowerCase().includes(search.toLowerCase())
-  );
+  // useEffect(() => {
+  //   fetchAssignments();
+  // }, []);
+
+  // const filteredAssignments = assignments.filter((a) =>
+  //   `${a.intern?.name || ''} ${a.mentor?.name || ''}`.toLowerCase().includes(search.toLowerCase())
+  // );
 
   const handleDelete = async (id: number, name: string) => {
     if (window.confirm(`Xóa user "${name}"?`)) {
@@ -132,7 +372,6 @@ export default function UserManagement() {
 
 
 
-
   const mentorOptions = useMemo(() => {
     return internMentorData.data
       .filter((u: any) => u.type === 'mentor')
@@ -141,6 +380,7 @@ export default function UserManagement() {
         label: `${u.name} (${u.email})`,
       }));
   }, [internMentorData.data]);
+
 
 
 
@@ -203,13 +443,16 @@ export default function UserManagement() {
               {/* Intern Select/Search */}
               <div className="col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Interns</label>
-                <div className="relative">
+                <div className="relative" ref={internDropdownRef}>
                   <div
                     className="border rounded px-2 py-1 flex flex-wrap gap-1 items-center min-h-[40px] cursor-text focus-within:ring-2 focus-within:ring-blue-400"
                     onClick={() => setShowDropdown(true)}
                   >
                     {assignForm.internIds.map((id) => {
-                      const intern = assignableInterns.find((u: any) => u.id.toString() === id);
+                      const intern = unassignedInterns.find((u: any) => u?.id?.toString() === id);
+
+
+
                       if (!intern) return null;
                       return (
                         <div
@@ -244,11 +487,14 @@ export default function UserManagement() {
 
                   {showDropdown && (
                     <ul className="absolute z-10 bg-white border rounded mt-1 w-full max-h-40 overflow-y-auto shadow">
-                      {assignableInterns
-                        .filter(
-                          (u: any) =>
-                            !assignForm.internIds.includes(u.id.toString()) &&
-                            `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
+                      {unassignedInterns
+                        .filter((u: any) =>
+                          u &&
+                          typeof u.id !== 'undefined' &&
+                          typeof u.name === 'string' &&
+                          typeof u.email === 'string' &&
+                          !assignForm.internIds.includes(u.id.toString()) &&
+                          `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
                         )
                         .map((u: any) => (
                           <li
@@ -266,7 +512,16 @@ export default function UserManagement() {
                             {u.name} ({u.email})
                           </li>
                         ))}
-                      {assignableInterns.filter(
+
+
+
+
+
+
+
+
+
+                      {filteredAssignableInterns.filter(
                         (u: any) =>
                           !assignForm.internIds.includes(u.id.toString()) &&
                           `${u.name} ${u.email}`.toLowerCase().includes(internSearch.toLowerCase())
@@ -281,13 +536,64 @@ export default function UserManagement() {
               {/* Mentor Select */}
               <div className="col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Mentor</label>
-                <Select
-                  options={mentorOptions}
-                  value={mentorOptions.find((opt: any) => opt.value === assignForm.mentorId)}
-                  onChange={(selected) =>
-                    setAssignForm({ ...assignForm, mentorId: selected?.value || '' })
-                  }
-                />
+                <div className="col-span-1">
+                  {/* <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Mentor</label> */}
+                  <div className="relative" ref={mentorDropdownRef}>
+                    <div
+                      className="border rounded px-2 py-1 flex items-center min-h-[40px] cursor-text focus-within:ring-2 focus-within:ring-blue-400"
+                      onClick={() => setShowMentorDropdown(true)}
+                    >
+                      <span className="text-sm text-gray-800 flex-1">
+                        {mentorPages?.pages
+                          .flatMap(p => p.data)
+                          .find((m: any) => m.id.toString() === assignForm.mentorId)?.name || 'Chọn mentor...'}
+                      </span>
+                    </div>
+
+                    {showMentorDropdown && (
+                      <div className="absolute z-10 bg-white border rounded mt-1 w-full max-h-48 overflow-y-auto shadow">
+                        <input
+                          type="text"
+                          value={mentorSearch}
+                          onChange={(e) => setMentorSearch(e.target.value)}
+                          placeholder="Tìm mentor..."
+                          className="w-full px-3 py-2 text-sm border-b outline-none"
+                        />
+
+                        {mentorPages?.pages
+                          .flatMap(p => p.data)
+                          .filter((m: any) =>
+                            `${m.name} ${m.email}`.toLowerCase().includes(mentorSearch.toLowerCase())
+                          )
+                          .map((mentor: any) => (
+                            <div
+                              key={mentor.id}
+                              className="px-3 py-2 text-sm hover:bg-blue-100 cursor-pointer"
+                              onClick={() => {
+                                setAssignForm({ ...assignForm, mentorId: mentor.id.toString() });
+                                setShowMentorDropdown(false);
+                              }}
+                            >
+                              {mentor.name} ({mentor.email})
+                            </div>
+                          ))}
+
+
+                      {hasMoreMentors && (
+  <div
+    ref={mentorLoadMoreRef}
+    className="text-center py-2 text-sm text-gray-400"
+  >
+    Đang tải thêm...
+  </div>
+)}
+
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+
               </div>
 
               {/* Date Pickers */}
@@ -318,8 +624,9 @@ export default function UserManagement() {
                 onClick={async () => {
                   try {
                     await api.post('/admin/assignments', assignForm);
-                    await fetchAssignments();
-                   showToastMessage('Assign success!')
+                    await refetchAssignments();
+
+                    showToastMessage('Assign success!')
                     setAssignForm({ internIds: [], mentorId: '', startDate: '', endDate: '' });
                   } catch (err: any) {
                     showToastMessage(`Assign fail!: ${err.response?.data?.message || err.message}`);
@@ -344,7 +651,7 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredAssignments.map((a) => (
+              {allAssignments.map((a: any) => (
                 <tr key={a.id} className="border-t hover:bg-gray-50">
                   <td className="p-2">{a.intern?.name}</td>
                   <td className="p-2">{a.mentor?.name}</td>
@@ -356,7 +663,7 @@ export default function UserManagement() {
                       onClick={async () => {
                         if (window.confirm('Xóa phân công này?')) {
                           await api.delete(`/admin/assignments/${a.id}`);
-                          fetchAssignments();
+                          refetchAssignments();
                         }
                       }}
                     >
@@ -367,6 +674,12 @@ export default function UserManagement() {
               ))}
             </tbody>
           </table>
+          {tab === 'assignment' && (
+            <div ref={loadMoreRef} className="h-10" />
+          )}
+
+
+
         </>
       ) : (
         <>
@@ -430,49 +743,48 @@ export default function UserManagement() {
 
           {/* Pagination */}
           {/* Pagination - MUI Style Inspired */}
-<div className="flex justify-center items-center gap-1 mt-6 text-sm text-gray-800">
-  <button
-    onClick={() => setPage((p) => Math.max(p - 1, 1))}
-    disabled={page === 1}
-    className="px-2 py-1 hover:underline disabled:text-gray-400"
-  >
-    &lt;
-  </button>
+          <div className="flex justify-center items-center gap-1 mt-6 text-sm text-gray-800">
+            <button
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page === 1}
+              className="px-2 py-1 hover:underline disabled:text-gray-400"
+            >
+              &lt;
+            </button>
 
-  {[...Array(totalPages)].map((_, i) => {
-    const pg = i + 1;
-    if (pg === 1 || pg === totalPages || (pg >= page - 1 && pg <= page + 1)) {
-      return (
-        <button
-          key={pg}
-          onClick={() => setPage(pg)}
-          className={`w-8 h-8 rounded-full text-sm ${
-            page === pg
-              ? 'bg-blue-600 text-white'
-              : 'hover:bg-gray-100'
-          }`}
-        >
-          {pg}
-        </button>
-      );
-    }
-    if (
-      (pg === page - 2 && page > 4) ||
-      (pg === page + 2 && page < totalPages - 3)
-    ) {
-      return <span key={`dots-${pg}`} className="px-2">...</span>;
-    }
-    return null;
-  })}
+            {[...Array(totalPages)].map((_, i) => {
+              const pg = i + 1;
+              if (pg === 1 || pg === totalPages || (pg >= page - 1 && pg <= page + 1)) {
+                return (
+                  <button
+                    key={pg}
+                    onClick={() => setPage(pg)}
+                    className={`w-8 h-8 rounded-full text-sm ${page === pg
+                      ? 'bg-blue-600 text-white'
+                      : 'hover:bg-gray-100'
+                      }`}
+                  >
+                    {pg}
+                  </button>
+                );
+              }
+              if (
+                (pg === page - 2 && page > 4) ||
+                (pg === page + 2 && page < totalPages - 3)
+              ) {
+                return <span key={`dots-${pg}`} className="px-2">...</span>;
+              }
+              return null;
+            })}
 
-  <button
-    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-    disabled={page === totalPages}
-    className="px-2 py-1 hover:underline disabled:text-gray-400"
-  >
-    &gt;
-  </button>
-</div>
+            <button
+              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              disabled={page === totalPages}
+              className="px-2 py-1 hover:underline disabled:text-gray-400"
+            >
+              &gt;
+            </button>
+          </div>
 
 
         </>
@@ -481,40 +793,40 @@ export default function UserManagement() {
       {/* User Form Dialog */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <div className="bg-white w-full max-w-lg p-4 rounded shadow-lg">
-            <UserForm
-              type={resolvedType as UserType | undefined}
-              initialData={
-                editingUser
-                  ? {
-                    name: editingUser.name,
-                    email: editingUser.email,
-                    bio: editingUser.bio || '',
-                    school: editingUser.school || '',
-                    major: editingUser.major || '',
-                    phone: editingUser.phone || '',
-                    linkedinLink: editingUser.linkedinLink || '',
-                    expertise: editingUser.expertise || '',
-                  }
-                  : undefined
-              }
-              onClose={() => {
+
+          <UserForm
+            type={resolvedType as UserType | undefined}
+            initialData={
+              editingUser
+                ? {
+                  name: editingUser.name,
+                  email: editingUser.email,
+                  bio: editingUser.bio || '',
+                  school: editingUser.school || '',
+                  major: editingUser.major || '',
+                  phone: editingUser.phone || '',
+                  linkedinLink: editingUser.linkedinLink || '',
+                  expertise: editingUser.expertise || '',
+                }
+                : undefined
+            }
+            onClose={() => {
+              setShowForm(false);
+              setEditingUser(null);
+            }}
+            onSubmit={(data) => {
+              const req = editingUser
+                ? api.put(`/users/${editingUser.id}`, data)
+                : api.post('/users', { ...data, type: resolvedType });
+
+              req.then(() => {
+                refetch();
                 setShowForm(false);
                 setEditingUser(null);
-              }}
-              onSubmit={(data) => {
-                const req = editingUser
-                  ? api.put(`/users/${editingUser.id}`, data)
-                  : api.post('/users', { ...data, type: resolvedType });
+              });
+            }}
+          />
 
-                req.then(() => {
-                  refetch();
-                  setShowForm(false);
-                  setEditingUser(null);
-                });
-              }}
-            />
-          </div>
         </div>
       )}
     </div>

@@ -20,6 +20,7 @@ const InternProfileView: React.FC = () => {
   const fetchProfile = async () => {
     try {
       const res = await api.get<InternProfile>('/interns/profile');
+      
       setProfile({
         ...res.data,
         avatarUrl: res.data.avatarUrl
@@ -33,7 +34,7 @@ const InternProfileView: React.FC = () => {
       setLoading(false);
     }
   };
-
+const API_BASE = 'http://localhost:3000';
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -63,11 +64,16 @@ const InternProfileView: React.FC = () => {
     <div className="bg-white shadow-lg rounded-lg w-full p-6">
       {/* Avatar căn giữa */}
       <div className="flex justify-center mb-6">
-        <img
-          src={profile.avatarUrl || '/default-avatar.png'}
-          alt="Avatar"
-          className="w-32 h-32 rounded-full object-cover border border-gray-300"
-        />
+        
+<img
+  src={
+    profile.avatarUrl
+      ? `${API_BASE}${profile.avatarUrl}?t=${Date.now()}`
+      : '/default.png'
+  }
+  alt="Avatar"
+  className="w-32 h-32 rounded-full object-cover border"
+/>
       </div>
 
       {/* Form */}

@@ -27,6 +27,8 @@ interface TokenPayload {
 }
 
 export default function DashboardLayout() {
+  const location = useLocation(); 
+const fullPath = location.pathname + location.search;
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [unreadTasks, setUnreadTasks] = useState(0);
@@ -40,8 +42,9 @@ export default function DashboardLayout() {
 
 
 
+
   const navigate = useNavigate();
-  const location = useLocation();
+
   const [submenuOpen, setSubmenuOpen] = useState(false);
   const getRoleFromToken = (): string => {
     const token = sessionStorage.getItem("accessToken");
@@ -248,16 +251,17 @@ export default function DashboardLayout() {
             {role === "mentor" && (
               <>
                 <Submenu
-                  label="Intern Management"
-                  icon={icon_dashboard}
-                  routes={[
-                    { label: "Quản lý Intern", to: "/dashboard/interns?tab=interns" },
-                    { label: "Quản lý Task", to: "/dashboard/interns?tab=tasks" }
-                  ]}
-                  submenuOpen={submenuOpen}
-                  setSubmenuOpen={setSubmenuOpen}
-                  currentPath={location.pathname}
-                />
+  label="Intern Management"
+  icon={icon_dashboard}
+  routes={[
+    { label: "Quản lý Intern", to: "/dashboard/interns?tab=interns" },
+    { label: "Quản lý Task", to: "/dashboard/interns?tab=tasks" }
+  ]}
+  submenuOpen={submenuOpen}
+  setSubmenuOpen={setSubmenuOpen}
+  currentPath={fullPath}
+/>
+
 
 
                 {/* <SidebarLink
@@ -282,8 +286,6 @@ export default function DashboardLayout() {
       </div>
 
       <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
-
-
 
         <div
           className={`flex-1 p-6 overflow-y-auto bg-gray-100 transition-all duration-300 ${submenuOpen ? "pl-64" : ""

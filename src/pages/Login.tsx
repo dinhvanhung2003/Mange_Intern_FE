@@ -55,7 +55,9 @@ const Login = () => {
         { email, password, captcha },
         { withCredentials: true }
       );
-
+      // const { accessToken, refreshToken } = res.data;
+      // document.cookie = `accessToken=${accessToken}; path=/; max-age=900`; // 15 phút
+      // document.cookie = `refreshToken=${refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 ngày
       sessionStorage.setItem('accessToken', res.data.accessToken);
       navigate('/dashboard');
     } catch (err) {

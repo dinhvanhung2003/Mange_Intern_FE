@@ -59,18 +59,29 @@ export default function FloatingChatMentor() {
   const [membersToAdd, setMembersToAdd] = useState<number[]>([]);
 
 
+useEffect(() => {
+  if (!user) return;
+
+  api.get('/chat-groups/my').then(res => {
+    const groupsWithNames = res.data.map((g: any) => ({
+      ...g,
+      memberNames: g.members?.map((m: any) => m.name).join(', ') || '',
+    }));
+    setGroups(groupsWithNames);
+  });
+}, []);
 
 
   useEffect(() => {
     if (!user) return;
     api.get('/mentor/assignments').then(res => setAssignments(res.data || []));
-    api.get('/chat-groups').then(res => {
-      const groupsWithNames = res.data.map((g: any) => ({
-        ...g,
-        memberNames: g.members?.map((m: any) => m.name).join(', ') || '',
-      }));
-      setGroups(groupsWithNames);
-    });
+    // api.get('/chat-groups').then(res => {
+    //   const groupsWithNames = res.data.map((g: any) => ({
+    //     ...g,
+    //     memberNames: g.members?.map((m: any) => m.name).join(', ') || '',
+    //   }));
+    //   setGroups(groupsWithNames);
+    // });
   }, []);
 
   useEffect(() => {
@@ -113,26 +124,58 @@ export default function FloatingChatMentor() {
     };
   }, [selectedGroup]);
 
-  const sendMessage = () => {
-    if (!input.trim() || !currentUserId) return;
-    if (selectedAssignment) {
-      socket.emit('send_message', {
-        assignmentId: selectedAssignment.id,
-        senderId: currentUserId,
-        message: input,
-      });
-    } else if (selectedGroup) {
-      socket.emit('send_group_message', {
-        groupId: selectedGroup.id,
-        senderId: currentUserId,
-        message: input,
-      });
-    }
-    setInput('');
-  };
+ const sendMessage = () => {
+  if (!input.trim() || !currentUserId) return;
+
+  if (selectedAssignment) {
+    socket.emit('send_message', {
+      assignmentId: selectedAssignment.id,
+      senderId: currentUserId,
+      message: input,
+    });
+  } else if (selectedGroup) {
+    socket.emit('send_group_message', {
+      groupId: selectedGroup.id,
+      senderId: currentUserId,
+      message: input,
+    });
+  }
+
+  setInput('');
+};
+// useEffect(() => {
+//   const handler = (msg: Message) => {
+//     if (msg.senderId === currentUserId) return; 
+//     setMessages(prev => [...prev, msg]);
+//   };
+
+//   socket.on('receive_message', handler);
+//   socket.on('receive_group_message', handler);
+
+//   return () => {
+//     socket.off('receive_message', handler);
+//     socket.off('receive_group_message', handler);
+//   };
+// }, [currentUserId]);
+
 
   return (
-    <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999 }}>
+    <>
+    
+      <CreateGroupModal
+  isOpen={isCreatingGroup}
+  key={isCreatingGroup ? 'modal-open' : 'modal-closed'}
+  onClose={() => setIsCreatingGroup(false)}
+  assignments={assignments}
+  currentUserId={currentUserId}
+  onGroupCreated={(newGroup) => {
+    setGroups(prev => [...prev, newGroup]);
+    setSelectedGroup(newGroup);
+    socket.emit('join_group', newGroup.id);
+    api.get(`/messages/group/${newGroup.id}`).then(res => setMessages(res.data));
+  }}
+/>
+ <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999 }}>
       {open ? (
         <div style={{
           width: 320,
@@ -257,7 +300,7 @@ export default function FloatingChatMentor() {
                     <button onClick={async () => {
                       await api.post(`/chat-groups/${selectedGroup.id}/remove-member`, { userId: m.id });
                       socket.emit('group_updated', selectedGroup.id);
-                    }}>Xóa</button>
+                    }}>Xóa❌</button>
                   )}
                 </li>
               ))}
@@ -275,7 +318,7 @@ export default function FloatingChatMentor() {
                     background: 'white', padding: 20, borderRadius: 10, zIndex: 1001, width: 300, maxHeight: '80vh', overflowY: 'auto'
                   }}
                 >
-                  <h3>Thêm thành viên</h3>
+                  <h3>➕Thêm thành viên</h3>
                   {assignments.map(a => (
                     <div key={a.internId}>
                       <label>
@@ -318,7 +361,7 @@ export default function FloatingChatMentor() {
               setSelectedGroup(null);
               setShowGroupModal(false);
               socket.emit('group_deleted', selectedGroup.id);
-            }}>Giải tán nhóm</button>
+            }}>🗑Giải tán nhóm</button>
             <div style={{ marginTop: 10, textAlign: 'right' }}>
               <button onClick={() => setShowGroupModal(false)}>Đóng</button>
             </div>
@@ -326,23 +369,13 @@ export default function FloatingChatMentor() {
         </>
       )}
 
-      {/* MODAL TẠO NHÓM */}
+
     
       
 
-      <CreateGroupModal
-  isOpen={isCreatingGroup}
-  onClose={() => setIsCreatingGroup(false)}
-  assignments={assignments}
-  currentUserId={currentUserId}
-  onGroupCreated={(newGroup) => {
-    setGroups(prev => [...prev, newGroup]);
-    setSelectedGroup(newGroup);
-    socket.emit('join_group', newGroup.id);
-    api.get(`/messages/group/${newGroup.id}`).then(res => setMessages(res.data));
-  }}
-/>
     </div>
+    </>
+   
     
   );
 }

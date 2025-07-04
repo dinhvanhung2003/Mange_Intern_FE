@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import api from '../utils/axios';
-import { useEffect } from 'react';
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -19,7 +20,6 @@ export default function CreateGroupModal({
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedInterns, setSelectedInterns] = useState<number[]>([]);
 
-  // 🔥 Điều kiện hiển thị modal
   if (!isOpen) return null;
 
   const handleCreate = async () => {
@@ -42,9 +42,9 @@ export default function CreateGroupModal({
     onClose();
   };
 
-  return (
+  return ReactDOM.createPortal(
     <>
-      {/* backdrop */}
+      {/* Backdrop */}
       <div
         style={{
           position: 'fixed',
@@ -54,7 +54,8 @@ export default function CreateGroupModal({
         }}
         onClick={onClose}
       />
-      {/* modal box */}
+
+      {/* Modal */}
       <div
         style={{
           position: 'fixed',
@@ -95,11 +96,16 @@ export default function CreateGroupModal({
             </label>
           </div>
         ))}
-        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{
+          marginTop: 10,
+          display: 'flex',
+          justifyContent: 'space-between'
+        }}>
           <button onClick={onClose}>Hủy</button>
           <button onClick={handleCreate}>Tạo nhóm</button>
         </div>
       </div>
-    </>
+    </>,
+    document.getElementById('modal-root') as HTMLElement
   );
 }

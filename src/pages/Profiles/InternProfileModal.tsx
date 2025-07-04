@@ -90,28 +90,36 @@ const InternProfileModal = ({
             &times;
           </button>
         </div>
-        <div className="col-span-full">
-          <label className="block text-sm font-medium mb-1">Ảnh đại diện</label>
-          {avatarPreview && (
-            <img
-              src={avatarPreview}
-              alt="Avatar Preview"
-              className="w-24 h-24 object-cover rounded-full border mb-2"
-            />
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setAvatarFile(file);
-                setAvatarPreview(URL.createObjectURL(file));
-              }
-            }}
-            className="block w-full"
-          />
-        </div>
+     <div className="col-span-full mb-4">
+  <label className="block text-sm font-medium mb-1">Ảnh đại diện</label>
+
+  <img
+    src={
+      avatarPreview
+        ? avatarPreview
+        : form.avatarUrl
+        ? `http://localhost:3000${form.avatarUrl}`
+        : '/default.png'
+    }
+    alt="Avatar"
+    className="w-24 h-24 object-cover rounded-full border mb-2"
+  />
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+      }
+    }}
+    className="block w-full"
+/>
+</div>
+
+
 
         <form
           onSubmit={handleSubmit}

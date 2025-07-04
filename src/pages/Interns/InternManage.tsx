@@ -95,7 +95,7 @@ export default function MentorDashboard() {
       const res = await api.get('mentor/tasks', {
         params: { title: debouncedTaskSearch },
       });
-      // console.log('response:', res.data);
+      console.log('response:', res.data.data);
       return res.data.data;
     },
     enabled: tab === 'tasks',

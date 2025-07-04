@@ -14,8 +14,14 @@ export default function SidebarLink({
   icon,
   currentPath,
   onClick,
-}: SidebarLinkProps) {
-  const isActive = currentPath === to;
+}: {
+  to: string;
+  label: string;
+  icon: string;
+  currentPath: string;
+  onClick?: () => void;
+}) {
+  const isActive = currentPath === to || currentPath === "active";
 
   return (
     <Link
