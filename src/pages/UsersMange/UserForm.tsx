@@ -1,6 +1,7 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-
+import { useClickOutside } from "../../hooks/useCloseModal";
+import { useRef } from "react";
 export type UserType = "intern" | "mentor";
 
 interface FormData {
@@ -46,7 +47,8 @@ export default function UserForm({
       expertise: initialData?.expertise || "",
     },
   });
-
+  const modalRef = React.useRef<HTMLDivElement>(null);
+useClickOutside(modalRef, onClose);
 
   React.useEffect(() => {
     if (initialData) {
@@ -61,7 +63,7 @@ export default function UserForm({
   };
 
   return (
-    <div className="fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white z-50 shadow-xl p-6 overflow-auto">
+    <div ref={modalRef} className="fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white z-50 shadow-xl p-6 overflow-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-bold text-blue-900">
           {initialData

@@ -4,9 +4,9 @@ import api from '../../utils/axios';
 import avatar_chat from '../../assets/avatar_chat.png';
 import CreateGroupModal from '../../components/CreateGroupChat';
 import EmojiPicker from 'emoji-picker-react';
+import { socket } from '../../utils/socket';
 
 
-const socket = io('http://localhost:3000');
 
 interface Message {
   senderId: number;
@@ -61,6 +61,7 @@ export default function FloatingChatMentor() {
 
   const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
 const [showSuggestions, setShowSuggestions] = useState(false);
+const [loadingMessages, setLoadingMessages] = useState(false);
 
 
 
@@ -93,28 +94,35 @@ useEffect(() => {
   useEffect(() => {
     if (!user) return;
     api.get('/mentor/assignments').then(res => setAssignments(res.data || []));
-    // api.get('/chat-groups').then(res => {
-    //   const groupsWithNames = res.data.map((g: any) => ({
-    //     ...g,
-    //     memberNames: g.members?.map((m: any) => m.name).join(', ') || '',
-    //   }));
-    //   setGroups(groupsWithNames);
-    // });
   }, []);
 
+const socketListenerAdded = useRef(false);
+
 useEffect(() => {
-  const handler = (msg: Message) => {
-    setMessages(prev => [...prev, msg]);
+  if (!open || socketListenerAdded.current) return;
+
+  const handler = (msg: any) => {
+    setMessages(prev => {
+      if (prev.some(m => m.senderId === msg.senderId )) return prev;
+      return [...prev, msg];
+    });
   };
 
   socket.on('receive_message', handler);
   socket.on('receive_group_message', handler);
+  socketListenerAdded.current = true;
 
   return () => {
     socket.off('receive_message', handler);
     socket.off('receive_group_message', handler);
+    socketListenerAdded.current = false;
   };
-}, []); 
+}, [open]);
+
+
+
+
+
 
 
 
@@ -155,8 +163,8 @@ const sendMessage = () => {
   let mentionedUserIds: number[] = [];
 
   if (selectedGroup) {
-    // Tìm các từ bắt đầu bằng @ trong input
-    const tags = messageText.match(/@(\w+)/g); // ví dụ: @nam, @linh
+
+    const tags = messageText.match(/@(\w+)/g);
     if (tags && selectedGroup.members) {
       const tagNames = tags.map(tag => tag.slice(1).toLowerCase());
       mentionedUserIds = selectedGroup.members
@@ -164,43 +172,108 @@ const sendMessage = () => {
         .map((m: any) => m.id);
     }
 
+    // Gửi socket
     socket.emit('send_group_message', {
       groupId: selectedGroup.id,
       senderId: currentUserId,
       message: messageText,
-      mentionedUserIds, // truyền thêm vào
+      mentionedUserIds,
     });
+
+  
+    setMessages(prev => [
+      ...prev,
+      {
+        senderId: currentUserId,
+        senderName: user?.name,
+        message: messageText,
+      
+      }
+    ]);
+
   } else if (selectedAssignment) {
     socket.emit('send_message', {
       assignmentId: selectedAssignment.id,
       senderId: currentUserId,
       message: messageText,
     });
+
+  
+    setMessages(prev => [
+      ...prev,
+      {
+        senderId: currentUserId,
+        senderName: user?.name,
+        message: messageText,
+      }
+    ]);
   }
-// setMessages(prev => [...prev, {
-//   senderId: currentUserId,
-//   senderName: user?.name,
-//   message: input
-// }]);
 
   setInput('');
 };
 
 
-// useEffect(() => {
-//   const handler = (msg: Message) => {
-//     if (msg.senderId === currentUserId) return; 
-//     setMessages(prev => [...prev, msg]);
-//   };
 
-//   socket.on('receive_message', handler);
-//   socket.on('receive_group_message', handler);
 
-//   return () => {
-//     socket.off('receive_message', handler);
-//     socket.off('receive_group_message', handler);
-//   };
-// }, [currentUserId]);
+
+
+// test 
+const fetchMessagesForAssignment = async (assignmentId: number) => {
+  setLoadingMessages(true);
+  setMessages([]);
+ const res = await api.get(`/messages/${assignmentId}`);
+const newMessages = res.data || [];
+
+setMessages(prev => {
+  const merged = [...prev];
+  for (const msg of newMessages) {
+    const isDuplicate = merged.some(m =>
+      m.senderId === msg.senderId &&
+      m.message === msg.message 
+      // m.sentAt === msg.sentAt
+    );
+    if (!isDuplicate) merged.push(msg);
+  }
+  return merged;
+});
+
+  setLoadingMessages(false);
+};
+
+const fetchMessagesForGroup = async (groupId: number) => {
+  setLoadingMessages(true);
+  setMessages([]);
+  const res = await api.get(`/messages/group/${groupId}`);
+const newMessages = res.data || [];
+
+setMessages(prev => {
+  const merged = [...prev];
+  for (const msg of newMessages) {
+    const isDuplicate = merged.some(m =>
+      m.senderId === msg.senderId &&
+      m.message === msg.message 
+      // m.sentAt === msg.sentAt
+    );
+    if (!isDuplicate) {
+      merged.push(msg);
+    }
+  }
+  return merged;
+});
+
+  setLoadingMessages(false);
+};
+
+
+
+
+
+
+
+
+
+
+
 
 
   return (
@@ -243,7 +316,20 @@ const sendMessage = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               {(selectedAssignment || selectedGroup) && (
-                <button onClick={() => { setSelectedAssignment(null); setSelectedGroup(null); }} style={{ background: 'none', border: 'none', color: 'white', fontSize: 18 }}>⬅️</button>
+                <button
+                
+                
+                
+                onClick={() =>
+                   { setSelectedAssignment(null); setSelectedGroup(null); }} 
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   style={{ background: 'none', border: 'none', color: 'white', fontSize: 18 }}>⬅️</button>
               )}
               <span style={{ marginLeft: 8 }}>
                 {selectedAssignment ? selectedAssignment.internName : selectedGroup?.name || 'Chat'}
@@ -280,11 +366,13 @@ const sendMessage = () => {
                   <>
                     <input placeholder="Tìm intern..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: 6, marginTop: 10 }} />
                     {assignments.filter(a => a.internName?.toLowerCase().includes(searchTerm.toLowerCase())).map(a => (
-                      <div key={a.id} style={boxStyle} onClick={() => {
-                        setSelectedAssignment(a);
-                        socket.emit('join_room', a.id);
-                        api.get(`/messages/${a.id}`).then(res => setMessages(res.data));
-                      }}>
+                      <div key={a.id} style={boxStyle}
+                       onClick={() => {
+  setSelectedAssignment(a);
+  socket.emit('join_room', a.id);
+  fetchMessagesForAssignment(a.id);
+}}
+                      >
                         <img src={avatar_chat} alt="avatar" /> {a.internName}
                       </div>
                     ))}
@@ -298,7 +386,7 @@ const sendMessage = () => {
                         console.log('Selected group:', g);
                         setSelectedGroup(g);
                         socket.emit('join_group', g.id);
-                        api.get(`/messages/group/${g.id}`).then(res => setMessages(res.data));
+                     fetchMessagesForGroup(g.id);
                       }}>
                         {g.name}
                       

@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import api from '../../utils/axios';
 import DescriptionViewerDialog from '../../components/DesciptionTask';
 import { useAssignmentStore } from '../../stores/useAssignmentStore';
+import { useRef } from 'react';
+import { useClickOutside } from '../../hooks/useCloseModal';
 const socket = io('http://localhost:3000');
 
 export default function MyTasks() {
@@ -215,7 +217,15 @@ const handleAccept = async () => {
     }
   };
 
+  // co 3 modal can dong 
+  const submitModalRef = useRef<HTMLDivElement>(null);
+const logModalRef = useRef<HTMLDivElement>(null);
+const acceptModalRef = useRef<HTMLDivElement>(null);
 
+
+useClickOutside(submitModalRef, () => setShowSubmitModal(false));
+useClickOutside(logModalRef, () => setLogOpen(false));
+useClickOutside(acceptModalRef, () => setShowAcceptModal(false));
 
   return (
     <div className="w-full p-4">
@@ -353,7 +363,7 @@ const handleAccept = async () => {
       </div>
       {showSubmitModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white p-6 rounded w-full max-w-md">
+          <div ref={submitModalRef}className="bg-white p-6 rounded w-full max-w-md">
             <h2 className="text-lg font-bold mb-2">Nộp bài</h2>
             <textarea
               className="w-full border rounded p-2 mb-2"
@@ -389,7 +399,7 @@ const handleAccept = async () => {
       )}
       {logOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg shadow p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+          <div ref={logModalRef} className="bg-white rounded-lg shadow p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Lịch sử cập nhật task</h2>
               <button onClick={() => setLogOpen(false)} className="text-sm text-gray-500 hover:underline">Đóng</button>
@@ -430,7 +440,7 @@ const handleAccept = async () => {
       />
       {showAcceptModal && (
   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-    <div className="bg-white p-6 rounded w-full max-w-md">
+    <div ref={acceptModalRef} className="bg-white p-6 rounded w-full max-w-md">
       <h2 className="text-lg font-bold mb-2">Chấp nhận Task</h2>
       <textarea
         className="w-full border rounded p-2 mb-4"

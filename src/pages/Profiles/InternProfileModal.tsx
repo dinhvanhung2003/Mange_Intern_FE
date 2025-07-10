@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import api from "../../utils/axios";
-
+import { Button } from "../../components/ui/button";
 interface InternProfile {
   name?: string;
   school?: string;
@@ -26,6 +26,7 @@ const InternProfileModal = ({
   const [showToast, setShowToast] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(profile.avatarUrl);
+const BASE_URL =  "http://localhost:3000";
 
   useEffect(() => {
     setForm(profile);
@@ -93,17 +94,18 @@ const InternProfileModal = ({
      <div className="col-span-full mb-4">
   <label className="block text-sm font-medium mb-1">Ảnh đại diện</label>
 
-  <img
-    src={
-      avatarPreview
-        ? avatarPreview
-        : form.avatarUrl
-        ? `http://localhost:3000${form.avatarUrl}`
-        : '/default.png'
-    }
-    alt="Avatar"
-    className="w-24 h-24 object-cover rounded-full border mb-2"
-  />
+<img
+  src={
+    avatarPreview?.startsWith("blob:")
+      ? avatarPreview
+      : form.avatarUrl
+      ? `http://localhost:3000${form.avatarUrl}`
+      : '/default.png'
+  }
+  alt="Avatar"
+  className="w-24 h-24 object-cover rounded-full border mb-2"
+/>
+
 
   <input
     type="file"
@@ -145,12 +147,9 @@ const InternProfileModal = ({
           ))}
 
           <div className="col-span-full">
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-            >
-              Lưu thay đổi
-            </button>
+          <Button type="submit" className="w-full">
+  Lưu thay đổi
+</Button>
           </div>
         </form>
       </div>

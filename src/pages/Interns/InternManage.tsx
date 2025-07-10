@@ -38,6 +38,18 @@ export default function MentorDashboard() {
   const [debouncedTaskSearch] = useDebounce(taskSearch, 300);
   const BACKEND_URL = "http://localhost:3000";
 
+  const createTaskModalRef = useRef<HTMLDivElement>(null);
+const internTaskModalRef = useRef<HTMLDivElement>(null);
+const reportModalRef = useRef<HTMLDivElement>(null);
+const docxModalRef = useRef<HTMLDivElement>(null);
+const logModalRef = useRef<HTMLDivElement>(null);
+
+
+useClickOutside(createTaskModalRef, () => setOpenDialog(false));
+useClickOutside(internTaskModalRef, () => setTaskModalIntern(null));
+useClickOutside(reportModalRef, () => setReportDialogOpen(false));
+useClickOutside(docxModalRef, () => setDocxDialogOpen(false));
+useClickOutside(logModalRef, () => setLogDialogOpen(false));
 
 
 
@@ -59,6 +71,19 @@ export default function MentorDashboard() {
   const [logHistory, setLogHistory] = useState([]);
   const [logDialogOpen, setLogDialogOpen] = useState(false);
 
+  // thong tin cho prompt 
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+const [noteActionType, setNoteActionType] = useState<'error' | 'reset' | null>(null);
+const [noteTargetTask, setNoteTargetTask] = useState<any>(null);
+const [noteInput, setNoteInput] = useState('');
+
+// ham modal prompt 
+const openNoteModal = (task: any, action: 'error' | 'reset') => {
+  setNoteTargetTask(task);
+  setNoteActionType(action);
+  setNoteInput('');
+  setNoteModalOpen(true);
+};
 
   const handleShowLog = async (taskId: number) => {
     try {
@@ -595,7 +620,7 @@ useEffect(() => {
       )}
       {taskModalIntern && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div ref={modalRef}  className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
+          <div ref={internTaskModalRef}  className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
 
             {(() => {
               const internTasks = tasksByIntern[taskModalIntern.id] || [];
@@ -681,33 +706,7 @@ useEffect(() => {
                               {task.status === 'in_progress' && (task.submittedText || task.submittedFile) && (
                                 <button
                                   className="text-orange-600 hover:underline text-sm"
-                                  onClick={async () => {
-                                    const note = prompt('Nhập lý do đánh lỗi (tuỳ chọn):') || ''; 
-                                    try {
-                                      await api.patch(`/mentor/tasks/${task.id}/status`, {
-                                        status: 'error',
-                                        note,
-                                      });
-                                      showToastMessage('Đánh lỗi thành công. Task sẽ tự động reset sau 2s...');
-
-                                      setTimeout(async () => {
-                                        try {
-                                          await api.patch(`/mentor/tasks/${task.id}/status`, {
-                                            status: 'assigned',
-                                            note: 'Reset sau khi đánh lỗi', // 
-                                          });
-                                          fetchTasksForIntern(taskModalIntern.id);
-                                          queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
-                                          showToastMessage('Task đã được reset lại thành công');
-                                        } catch {
-                                          showToastMessage('Reset task thất bại');
-                                        }
-                                      }, 2000);
-                                    } catch {
-                                      showToastMessage('Lỗi khi đánh lỗi task');
-                                    }
-                                  }}
-
+                                  onClick={() => openNoteModal(task, 'error')}
                                 >
                                   Đánh lỗi (tự reset)
                                 </button>
@@ -717,20 +716,8 @@ useEffect(() => {
                               {(task.status === 'completed' || task.status === 'error') && (
                                 <button
                                   className="text-blue-600 hover:underline text-sm"
-                                  onClick={async () => {
-                                    const note = prompt('Nhập lý do reset task (tuỳ chọn):') || '';
-                                    try {
-                                      await api.patch(`/mentor/tasks/${task.id}/status`, {
-                                        status: 'assigned',
-                                        note,
-                                      });
-                                      fetchTasksForIntern(taskModalIntern.id);
-                                      queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
-                                      showToastMessage('Reset task thành công');
-                                    } catch {
-                                      showToastMessage('Lỗi khi reset task');
-                                    }
-                                  }}
+                                onClick={() => openNoteModal(task, 'reset')}
+
 
                                 >
                                   Reset task
@@ -895,6 +882,76 @@ useEffect(() => {
           </div>
         </div>
       )}
+{noteModalOpen && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+    <div className="bg-white p-6 rounded shadow w-full max-w-md">
+      <h2 className="text-lg font-semibold mb-2">
+        {noteActionType === 'error' ? 'Đánh lỗi task' : 'Reset task'}
+      </h2>
+      <textarea
+        rows={4}
+        className="w-full border rounded p-2 mb-4"
+        placeholder="Nhập lý do (tùy chọn)..."
+        value={noteInput}
+        onChange={(e) => setNoteInput(e.target.value)}
+      />
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setNoteModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 rounded"
+        >
+          Huỷ
+        </button>
+        <button
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+          onClick={async () => {
+            if (!noteTargetTask) return;
+
+            try {
+              if (noteActionType === 'error') {
+                await api.patch(`/mentor/tasks/${noteTargetTask.id}/status`, {
+                  status: 'error',
+                  note: noteInput,
+                });
+                showToastMessage('Đánh lỗi thành công. Task sẽ reset sau 2s...');
+                setNoteModalOpen(false);
+                setTimeout(async () => {
+                  try {
+                    await api.patch(`/mentor/tasks/${noteTargetTask.id}/status`, {
+                      status: 'assigned',
+                      note: 'Reset tự động sau đánh lỗi',
+                    });
+                    if (taskModalIntern) fetchTasksForIntern(taskModalIntern.id);
+                    queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+                    showToastMessage('Task đã được reset');
+                  } catch {
+                    showToastMessage('Reset task thất bại');
+                  }
+                }, 2000);
+              }
+
+              if (noteActionType === 'reset') {
+                await api.patch(`/mentor/tasks/${noteTargetTask.id}/status`, {
+                  status: 'assigned',
+                  note: noteInput,
+                });
+                if (taskModalIntern) fetchTasksForIntern(taskModalIntern.id);
+                queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
+                showToastMessage('Task đã được reset');
+              }
+
+              setNoteModalOpen(false);
+            } catch {
+              showToastMessage('Thao tác thất bại');
+            }
+          }}
+        >
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     </div>
   );

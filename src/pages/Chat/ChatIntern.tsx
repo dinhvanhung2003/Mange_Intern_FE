@@ -2,9 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../../utils/axios';
 import { useAssignmentStore } from '../../stores/useAssignmentStore';
-
-const socket = io('http://localhost:3000');
-
+import { socket } from '../../utils/socket';
+import EmojiPicker from 'emoji-picker-react';
 function getUserFromToken() {
   const token = sessionStorage.getItem('accessToken');
   if (!token) return null;
@@ -29,6 +28,12 @@ export default function FloatingChatIntern() {
   const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // gửi emoji 
+  const inputRef = useRef<HTMLInputElement>(null);
+const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+
 
   // Mentioned notification
   useEffect(() => {
@@ -75,19 +80,30 @@ export default function FloatingChatIntern() {
   }, [currentUserId]);
 
 
-  useEffect(() => {
-    const handleMsg = (msg: any) => {
-      setMessages(prev => [...prev, msg]);
-    };
+const socketListenerAdded = useRef(false);
 
-    socket.on('receive_message', handleMsg);
-    socket.on('receive_group_message', handleMsg);
 
-    return () => {
-      socket.off('receive_message', handleMsg);
-      socket.off('receive_group_message', handleMsg);
-    };
-  }, []);
+useEffect(() => {
+  if (!open || socketListenerAdded.current) return;
+
+  const handler = (msg: any) => {
+    setMessages(prev => {
+      if (prev.some(m => m.senderId === msg.senderId && m.sentAt === msg.sentAt)) return prev;
+      return [...prev, msg];
+    });
+  };
+
+  socket.on('receive_message', handler);
+  socket.on('receive_group_message', handler);
+  socketListenerAdded.current = true;
+
+  return () => {
+    socket.off('receive_message', handler);
+    socket.off('receive_group_message', handler);
+    socketListenerAdded.current = false;
+  };
+}, [open]);
+
 
   // Nhóm bị sửa
   useEffect(() => {
@@ -115,25 +131,53 @@ export default function FloatingChatIntern() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = () => {
-    if (!input.trim() || !currentUserId) return;
+const sendMessage = () => {
+  if (!input.trim() || !currentUserId) return;
 
-    if (selectedAssignment) {
-      socket.emit('send_message', {
-        assignmentId: selectedAssignment.id,
-        senderId: currentUserId,
-        message: input,
-      });
-    } else if (selectedGroup) {
-      socket.emit('send_group_message', {
-        groupId: selectedGroup.id,
-        senderId: currentUserId,
-        message: input,
-      });
+  const messageText = input;
+
+  if (selectedAssignment) {
+    socket.emit('send_message', {
+      assignmentId: selectedAssignment.id,
+      senderId: currentUserId,
+      message: messageText,
+    });
+  } else if (selectedGroup) {
+    socket.emit('send_group_message', {
+      groupId: selectedGroup.id,
+      senderId: currentUserId,
+      message: messageText,
+    });
+  }
+
+  // setMessages(prev => [...prev, {
+  //   senderId: currentUserId,
+  //   senderName: user?.name,
+  //   message: messageText
+  // }]);
+
+  setInput('');
+};
+
+const fetchMessagesForGroup = async (groupId: number) => {
+  setMessages([]); 
+  const res = await api.get(`/messages/group/${groupId}`);
+  const newMessages = res.data || [];
+
+  setMessages(prev => {
+    const merged: any[] = [];
+    for (const msg of newMessages) {
+      const isDuplicate = merged.some(m =>
+        m.senderId === msg.senderId &&
+        m.message === msg.message &&
+        m.sentAt === msg.sentAt
+      );
+      if (!isDuplicate) merged.push(msg);
     }
+    return merged;
+  });
+};
 
-    setInput('');
-  };
 
   const handleClose = () => {
     setOpen(false);
@@ -201,7 +245,25 @@ export default function FloatingChatIntern() {
                   <div onClick={() => {
                     setSelectedAssignment(assignment);
                     socket.emit('join_room', assignment.id);
-                    api.get(`/messages/${assignment.id}`).then(res => setMessages(res.data));
+                    setMessages([]);
+api.get(`/messages/${assignment.id}`).then(res => {
+  const newMessages = res.data || [];
+  setMessages(prev => {
+    const merged = [...prev];
+    for (const msg of newMessages) {
+      const isDuplicate = merged.some(m =>
+        m.senderId === msg.senderId &&
+        m.message === msg.message &&
+        m.sentAt === msg.sentAt
+      );
+      if (!isDuplicate) merged.push(msg);
+    }
+    return merged;
+  });
+});
+
+
+
                   }} style={{
                     padding: 8, background: '#eef', borderRadius: 6, marginBottom: 6, cursor: 'pointer'
                   }}>
@@ -212,7 +274,8 @@ export default function FloatingChatIntern() {
                   <div key={g.id} onClick={() => {
                     setSelectedGroup(g);
                     socket.emit('join_group', g.id);
-                    api.get(`/messages/group/${g.id}`).then(res => setMessages(res.data));
+                  fetchMessagesForGroup(g.id);
+
                   }} style={{
                     padding: 8, background: '#eef', borderRadius: 6, marginBottom: 6, cursor: 'pointer'
                   }}>
@@ -225,16 +288,44 @@ export default function FloatingChatIntern() {
 
           {/* Input */}
           {(selectedGroup || selectedAssignment) && (
-            <div style={{ padding: 10, borderTop: '1px solid #ccc' }}>
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                placeholder="Nhập tin nhắn..."
-                style={{ width: '80%' }}
-              />
-              <button onClick={sendMessage} disabled={!input.trim()}>Gửi</button>
-            </div>
+           <div style={{ position: 'relative', padding: 10, borderTop: '1px solid #ccc' }}>
+  <div style={{ display: 'flex', alignItems: 'center' }}>
+    <input
+      ref={inputRef}
+      value={input}
+      onChange={e => setInput(e.target.value)}
+      onKeyDown={e => e.key === 'Enter' && sendMessage()}
+      placeholder="Nhập tin nhắn..."
+      style={{ width: '70%' }}
+    />
+    <button onClick={() => setShowEmojiPicker(prev => !prev)} style={{ marginLeft: 5 }}>
+      😀
+    </button>
+    <button onClick={sendMessage} style={{ marginLeft: 5 }} disabled={!input.trim()}>
+      Gửi
+    </button>
+  </div>
+
+  {showEmojiPicker && (
+    <div style={{
+      position: 'absolute',
+      bottom: '40px',
+      right: '0px',
+      zIndex: 1001,
+      background: '#fff',
+      borderRadius: 10,
+      boxShadow: '0 0 10px rgba(0,0,0,0.2)'
+    }}>
+      <EmojiPicker
+        onEmojiClick={(emojiData) => {
+          setInput(prev => prev + emojiData.emoji);
+          inputRef.current?.focus();
+        }}
+      />
+    </div>
+  )}
+</div>
+
           )}
         </div>
       ) : (
