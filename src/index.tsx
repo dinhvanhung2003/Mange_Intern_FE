@@ -29,7 +29,7 @@ root.render(
   // <React.StrictMode>
     <QueryClientProvider client={queryClient}>
     <App />
-     <ReactQueryDevtools initialIsOpen={false} />
+     <ReactQueryDevtools initialIsOpen={true} />
   </QueryClientProvider>
   // </React.StrictMode>
 );

@@ -10,8 +10,8 @@ import UserMange from "./pages/UsersMange/UserMange";
 import InternProfileForm from "./pages/Profiles/InternProfileForm";
 import MyTask from "./pages/Interns/MyTask";
 import TaskList from "./pages/Tasks/TasksList";
-import ChatRoom from "./pages/Chat/FloatingChat";
-import FloatingChat from "./pages/Chat/FloatingChat";
+import ChatWrapper from "./pages/Chat/ChatWrapper";
+
 import { useEffect } from "react";
 import { useAssignmentStore } from "./stores/useAssignmentStore";
 function App() {
@@ -48,7 +48,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Routes>
-      <FloatingChat />
+      <ChatWrapper />
     </BrowserRouter>
   );
 }

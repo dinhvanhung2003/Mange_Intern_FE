@@ -9,6 +9,9 @@ import { useMemo } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
+import Toast from '../../components/Toast';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useCallback } from 'react';
 interface User {
   id: number;
   name: string;
@@ -132,7 +135,9 @@ export default function UserManagement() {
     refetch: refetchAssignments,
   } = useInfiniteQuery({
     queryKey: ['assignments', debouncedAssignmentSearch],
+    
     queryFn: async ({ pageParam = 1 }) => {
+      console.log(` Fetching assignments - page ${pageParam}`);
       const res = await api.get('/admin/assignments', {
         params: {
           search: debouncedAssignmentSearch,
@@ -178,6 +183,10 @@ export default function UserManagement() {
 
 
 
+
+
+  
+
   const allAssignments = assignmentPages?.pages.flatMap(p => p.data) || [];
   const users: User[] = usersResponse?.data || [];
   const total = usersResponse?.total || 0;
@@ -202,7 +211,14 @@ export default function UserManagement() {
 const mentorLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
 
+const assignmentListRef = useRef<HTMLDivElement>(null);
 
+const rowVirtualizer = useVirtualizer({
+  count: allAssignments.length,
+  getScrollElement: () => assignmentListRef.current,
+  estimateSize: useCallback(() => 50, []),
+  overscan: 5,
+});
 
   // 1. Gọi useInfiniteQuery để lấy intern chưa phân công
   const {
@@ -382,8 +398,21 @@ useEffect(() => {
   }, [internMentorData.data]);
 
 
+useEffect(() => {
+  if (!hasNextPage || isFetchingNextPage || tab !== 'assignment') return;
 
+  const lastItem = rowVirtualizer.getVirtualItems().at(-1);
+  if (!lastItem) return;
 
+  if (lastItem.index >= allAssignments.length - 5) {
+    fetchNextPage();
+  }
+}, [rowVirtualizer.getVirtualItems(), hasNextPage, isFetchingNextPage, tab]);
+
+useEffect(() => {
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  console.log('🔹 Rendered virtual rows:', virtualItems.map(item => item.index));
+}, [allAssignments, rowVirtualizer.getVirtualItems()]);
 
   return (
     <div className="p-6">
@@ -622,6 +651,15 @@ useEffect(() => {
               <button
                 className="bg-blue-500 hover:bg-green-700 text-white font-medium px-5 py-2 rounded-lg shadow transition"
                 onClick={async () => {
+                  if (
+      assignForm.internIds.length === 0 ||
+      !assignForm.mentorId ||
+      !assignForm.startDate ||
+      !assignForm.endDate
+    ) {
+      showToastMessage('Vui lòng nhập đầy đủ thông tin để phân công!');
+      return;
+    }
                   try {
                     await api.post('/admin/assignments', assignForm);
                     await refetchAssignments();
@@ -640,40 +678,68 @@ useEffect(() => {
 
 
           {/* Assignment Table */}
-          <table className="w-full text-sm border mt-4">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-2">Intern</th>
-                <th className="p-2">Mentor</th>
-                <th className="p-2">Start</th>
-                <th className="p-2">End</th>
-                <th className="p-2 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allAssignments.map((a: any) => (
-                <tr key={a.id} className="border-t hover:bg-gray-50">
-                  <td className="p-2">{a.intern?.name}</td>
-                  <td className="p-2">{a.mentor?.name}</td>
-                  <td className="p-2">{a.startDate}</td>
-                  <td className="p-2">{a.endDate}</td>
-                  <td className="p-2 text-center">
-                    <button
-                      className="text-red-500 hover:text-red-700"
-                      onClick={async () => {
-                        if (window.confirm('Xóa phân công này?')) {
-                          await api.delete(`/admin/assignments/${a.id}`);
-                          refetchAssignments();
-                        }
-                      }}
-                    >
-                      <FiTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+         <div className="border rounded mt-4 h-[500px] overflow-y-auto" ref={assignmentListRef}>
+  {/* Header */}
+  <div className="grid grid-cols-5 bg-gray-100 text-sm font-semibold sticky top-0 z-10">
+    <div className="p-2">Intern</div>
+    <div className="p-2">Mentor</div>
+    <div className="p-2">Start</div>
+    <div className="p-2">End</div>
+    <div className="p-2 text-center">Action</div>
+  </div>
+
+  
+  {/* Virtualized Rows Container */}
+<div
+  style={{
+    position: 'relative',
+    height: `${rowVirtualizer.getTotalSize()}px`,
+    width: '100%',
+  }}
+>
+
+
+  <div style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0 }} />
+
+  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+    const a = allAssignments[virtualRow.index];
+    return (
+      <div
+        key={a.id}
+        className="grid grid-cols-5 border-b text-sm hover:bg-gray-50 items-center"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          transform: `translateY(${virtualRow.start}px)`,
+          height: `${virtualRow.size}px`,
+        }}
+      >
+        <div className="p-2">{a.intern?.name}</div>
+        <div className="p-2">{a.mentor?.name}</div>
+        <div className="p-2">{a.startDate}</div>
+        <div className="p-2">{a.endDate}</div>
+        <div className="p-2 text-center">
+          <button
+            className="text-red-500 hover:text-red-700"
+            onClick={async () => {
+              if (window.confirm('Xóa phân công này?')) {
+                await api.delete(`/admin/assignments/${a.id}`);
+                refetchAssignments();
+              }
+            }}
+          >
+            <FiTrash />
+          </button>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+</div>
+
           {tab === 'assignment' && (
             <div ref={loadMoreRef} className="h-10" />
           )}
@@ -829,6 +895,12 @@ useEffect(() => {
 
         </div>
       )}
+   <Toast
+  message={toastMessage}
+  show={showToast}
+  onClose={() => setShowToast(false)}
+/>
+
     </div>
   );
 }

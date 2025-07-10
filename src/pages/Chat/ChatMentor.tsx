@@ -3,6 +3,9 @@ import { io } from 'socket.io-client';
 import api from '../../utils/axios';
 import avatar_chat from '../../assets/avatar_chat.png';
 import CreateGroupModal from '../../components/CreateGroupChat';
+import EmojiPicker from 'emoji-picker-react';
+
+
 const socket = io('http://localhost:3000');
 
 interface Message {
@@ -54,22 +57,37 @@ export default function FloatingChatMentor() {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+
+
+  const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
+const [showSuggestions, setShowSuggestions] = useState(false);
+
+
+
   // them thanh vien 
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [membersToAdd, setMembersToAdd] = useState<number[]>([]);
 
+const inputRef = useRef<HTMLInputElement>(null);
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
 useEffect(() => {
   if (!user) return;
 
-  api.get('/chat-groups/my').then(res => {
+  api.get('/chat-groups/created-by-me').then(res => {
+    console.log('Groups created by me:', res.data);
+
     const groupsWithNames = res.data.map((g: any) => ({
       ...g,
       memberNames: g.members?.map((m: any) => m.name).join(', ') || '',
     }));
+
     setGroups(groupsWithNames);
   });
-}, []);
+}, [user?.sub]);
+
+
 
 
   useEffect(() => {
@@ -84,15 +102,21 @@ useEffect(() => {
     // });
   }, []);
 
-  useEffect(() => {
-    const handler = (msg: Message) => setMessages(prev => [...prev, msg]);
-    socket.on('receive_message', handler);
-    socket.on('receive_group_message', handler);
-    return () => {
-      socket.off('receive_message', handler);
-      socket.off('receive_group_message', handler);
-    };
-  }, []);
+useEffect(() => {
+  const handler = (msg: Message) => {
+    setMessages(prev => [...prev, msg]);
+  };
+
+  socket.on('receive_message', handler);
+  socket.on('receive_group_message', handler);
+
+  return () => {
+    socket.off('receive_message', handler);
+    socket.off('receive_group_message', handler);
+  };
+}, []); 
+
+
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,25 +148,45 @@ useEffect(() => {
     };
   }, [selectedGroup]);
 
- const sendMessage = () => {
+const sendMessage = () => {
   if (!input.trim() || !currentUserId) return;
 
-  if (selectedAssignment) {
-    socket.emit('send_message', {
-      assignmentId: selectedAssignment.id,
-      senderId: currentUserId,
-      message: input,
-    });
-  } else if (selectedGroup) {
+  const messageText = input;
+  let mentionedUserIds: number[] = [];
+
+  if (selectedGroup) {
+    // Tìm các từ bắt đầu bằng @ trong input
+    const tags = messageText.match(/@(\w+)/g); // ví dụ: @nam, @linh
+    if (tags && selectedGroup.members) {
+      const tagNames = tags.map(tag => tag.slice(1).toLowerCase());
+      mentionedUserIds = selectedGroup.members
+        .filter((m: any) => m.name && tagNames.includes(m.name.toLowerCase()))
+        .map((m: any) => m.id);
+    }
+
     socket.emit('send_group_message', {
       groupId: selectedGroup.id,
       senderId: currentUserId,
-      message: input,
+      message: messageText,
+      mentionedUserIds, // truyền thêm vào
+    });
+  } else if (selectedAssignment) {
+    socket.emit('send_message', {
+      assignmentId: selectedAssignment.id,
+      senderId: currentUserId,
+      message: messageText,
     });
   }
+// setMessages(prev => [...prev, {
+//   senderId: currentUserId,
+//   senderName: user?.name,
+//   message: input
+// }]);
 
   setInput('');
 };
+
+
 // useEffect(() => {
 //   const handler = (msg: Message) => {
 //     if (msg.senderId === currentUserId) return; 
@@ -267,107 +311,297 @@ useEffect(() => {
           </div>
 
           {/* INPUT */}
-          {(selectedAssignment || selectedGroup) && (
-            <div style={{ padding: 10, borderTop: '1px solid #ddd' }}>
-              <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="Nhập tin nhắn..." style={{ width: '80%' }} />
-              <button onClick={sendMessage}>Gửi</button>
-            </div>
-          )}
+         {(selectedAssignment || selectedGroup) && (
+<div style={{ position: 'relative', padding: 10, borderTop: '1px solid #ddd' }}>
+  <div style={{ display: 'flex', alignItems: 'center' }}>
+  <input
+  ref={inputRef}
+  value={input}
+onChange={e => {
+  const value = e.target.value;
+  setInput(value);
+
+  const lastWord = value.split(' ').pop();
+  if (lastWord?.startsWith('@') && selectedGroup) {
+    const keyword = lastWord.slice(1).toLowerCase();
+    const matches = selectedGroup.members?.filter((m: any) =>
+      m.name.toLowerCase().includes(keyword)
+    );
+    setMentionSuggestions(matches);
+    setShowSuggestions(true);
+  } else {
+    setShowSuggestions(false);
+  }
+}}
+
+  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+  placeholder="Nhập tin nhắn..."
+  style={{ width: '70%' }}
+/>
+{showSuggestions && mentionSuggestions.length > 0 && (
+  <div style={{
+    position: 'absolute',
+    bottom: '45px',
+    left: 10,
+    right: 10,
+    maxHeight: 100,
+    overflowY: 'auto',
+    background: '#fff',
+    border: '1px solid #ccc',
+    borderRadius: 6,
+    zIndex: 10001,
+  }}>
+    {mentionSuggestions.map((user, idx) => (
+      <div key={idx} style={{ padding: 8, cursor: 'pointer' }}
+        onClick={() => {
+          const parts = input.split(' ');
+          parts[parts.length - 1] = `@${user.name}`;
+          setInput(parts.join(' ') + ' ');
+          setShowSuggestions(false);
+          inputRef.current?.focus();
+        }}>
+        {user.name}
+      </div>
+    ))}
+  </div>
+)}
+
+    <button onClick={() => setShowEmojiPicker(p => !p)} style={{ marginLeft: 5 }}>😀</button>
+    <button onClick={sendMessage} style={{ marginLeft: 5 }}>Gửi</button>
+  </div>
+
+ {showEmojiPicker && (
+  <div
+    style={{
+      position: 'absolute',
+      bottom: '40px',
+      right: '0px',
+      zIndex: 10001,
+      background: '#fff',
+      borderRadius: 10,
+      boxShadow: '0px 0px 10px rgba(0,0,0,0.2)'
+    }}
+  >
+    <EmojiPicker
+      onEmojiClick={(emojiData) => {
+        setInput(prev => prev + emojiData.emoji);
+        inputRef.current?.focus();
+      }}
+    />
+  </div>
+)}
+
+</div>
+
+)}
+
         </div>
       ) : (
         <button onClick={() => setOpen(true)} style={{ width: 60, height: 60, borderRadius: '50%', background: '#1976d2', color: 'white', fontSize: 24 }}>💬</button>
       )}
 
-      {/* MODAL QUẢN LÝ NHÓM */}
-      {showGroupModal && selectedGroup && (
+      
+     {/* MODAL QUẢN LÝ NHÓM */}
+{showGroupModal && selectedGroup && (
+  <>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.4)',
+        zIndex: 1000
+      }}
+      onClick={() => setShowGroupModal(false)}
+    />
+    <div
+      style={{
+        position: 'fixed',
+        top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: 'white',
+        padding: 24,
+        borderRadius: 12,
+        zIndex: 1001,
+        width: 360,
+        maxHeight: '80vh',
+        overflowY: 'auto',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
+      }}
+    >
+      <h2 style={{ marginBottom: 12, textAlign: 'center', color: '#333' }}>👥 Quản lý nhóm</h2>
+
+      <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+        {selectedGroup.members?.map((m: any) => (
+          <li key={m.id} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+            padding: '6px 10px',
+            background: '#f9f9f9',
+            borderRadius: 6
+          }}>
+            <span>{m.name}</span>
+            {m.id !== currentUserId && (
+              <button
+                onClick={async () => {
+                  await api.post(`/chat-groups/${selectedGroup.id}/remove-member`, { userId: m.id });
+                  socket.emit('group_updated', selectedGroup.id);
+                }}
+                style={{
+                  border: 'none',
+                  background: '#ff4d4f',
+                  color: '#fff',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                  cursor: 'pointer'
+                }}
+              >
+                ❌
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ marginTop: 10 }}>
+        <button
+          onClick={() => setShowAddMemberModal(true)}
+          style={{
+            width: '100%',
+            padding: 10,
+            borderRadius: 8,
+            background: '#1976d2',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          ➕ Thêm thành viên
+        </button>
+      </div>
+
+      {showAddMemberModal && selectedGroup && (
         <>
           <div
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }}
-            onClick={() => setShowGroupModal(false)}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.4)', zIndex: 1000
+            }}
+            onClick={() => setShowAddMemberModal(false)}
           />
           <div
             style={{
-              position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              background: 'white', padding: 20, borderRadius: 10, zIndex: 1001, width: 300
+              position: 'fixed', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white', padding: 20, borderRadius: 12,
+              zIndex: 1001, width: 340, maxHeight: '80vh', overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
             }}
           >
-            <h3>Quản lý nhóm</h3>
-            <ul>
-              {selectedGroup.members?.map((m: any) => (
-                <li key={m.id}>
-                  {m.name}
-                  {m.id !== currentUserId && (
-                    <button onClick={async () => {
-                      await api.post(`/chat-groups/${selectedGroup.id}/remove-member`, { userId: m.id });
-                      socket.emit('group_updated', selectedGroup.id);
-                    }}>Xóa❌</button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <button onClick={() => setShowAddMemberModal(true)}>Thêm thành viên</button>
-            {showAddMemberModal && selectedGroup && (
-              <>
-                <div
-                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }}
-                  onClick={() => setShowAddMemberModal(false)}
-                />
-                <div
-                  style={{
-                    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    background: 'white', padding: 20, borderRadius: 10, zIndex: 1001, width: 300, maxHeight: '80vh', overflowY: 'auto'
-                  }}
-                >
-                  <h3>➕Thêm thành viên</h3>
-                  {assignments.map(a => (
-                    <div key={a.internId}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          value={a.internId}
-                          disabled={selectedGroup.members.some((m: any) => m.id === a.internId)}
-                          onChange={e => {
-                            const id = Number(e.target.value);
-                            if (e.target.checked) setMembersToAdd(prev => [...prev, id]);
-                            else setMembersToAdd(prev => prev.filter(i => i !== id));
-                          }}
-                        />
-                        {a.internName}
-                      </label>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
-                    <button onClick={() => setShowAddMemberModal(false)}>❌ Hủy</button>
-                    <button
-                      onClick={async () => {
-                        if (!membersToAdd.length) return alert('Chọn ít nhất 1 intern');
-                        console.log('Thêm intern:', membersToAdd);
-                        await api.post(`/chat-groups/${selectedGroup.id}/add-members`, { memberIds: membersToAdd });
-
-                        socket.emit('group_edited', selectedGroup.id);
-                        setShowAddMemberModal(false);
-                        setMembersToAdd([]);
-                      }}
-                    >Thêm</button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <button onClick={async () => {
-              if (!window.confirm('Bạn có chắc muốn giải tán nhóm?')) return;
-
-              await api.delete(`/chat-groups/${selectedGroup.id}`);
-              setSelectedGroup(null);
-              setShowGroupModal(false);
-              socket.emit('group_deleted', selectedGroup.id);
-            }}>🗑Giải tán nhóm</button>
-            <div style={{ marginTop: 10, textAlign: 'right' }}>
-              <button onClick={() => setShowGroupModal(false)}>Đóng</button>
+            <h3 style={{ marginBottom: 12 }}>📋 Chọn thêm thành viên</h3>
+            {assignments.map(a => (
+              <div key={a.internId} style={{ marginBottom: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    value={a.internId}
+                    disabled={selectedGroup.members.some((m: any) => m.id === a.internId)}
+                    onChange={e => {
+                      const id = Number(e.target.value);
+                      setMembersToAdd(prev =>
+                        e.target.checked
+                          ? [...prev, id]
+                          : prev.filter(i => i !== id)
+                      );
+                    }}
+                  />
+                  {a.internName}
+                </label>
+              </div>
+            ))}
+            <div style={{
+              marginTop: 12,
+              display: 'flex',
+              justifyContent: 'space-between'
+            }}>
+              <button
+                onClick={() => setShowAddMemberModal(false)}
+                style={{
+                  padding: '8px 12px',
+                  background: '#ccc',
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                ❌ Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (!membersToAdd.length) return alert('Chọn ít nhất 1 intern');
+                  await api.post(`/chat-groups/${selectedGroup.id}/add-members`, { memberIds: membersToAdd });
+                  socket.emit('group_edited', selectedGroup.id);
+                  setShowAddMemberModal(false);
+                  setMembersToAdd([]);
+                }}
+                style={{
+                  padding: '8px 12px',
+                  background: '#28a745',
+                  color: '#fff',
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                ✅ Thêm
+              </button>
             </div>
           </div>
         </>
       )}
+
+      <button
+        onClick={async () => {
+          if (!window.confirm('Bạn có chắc muốn giải tán nhóm?')) return;
+          await api.delete(`/chat-groups/${selectedGroup.id}`);
+          setSelectedGroup(null);
+          setShowGroupModal(false);
+          socket.emit('group_deleted', selectedGroup.id);
+        }}
+        style={{
+          marginTop: 20,
+          width: '100%',
+          background: '#ff4d4f',
+          color: 'white',
+          padding: 10,
+          borderRadius: 8,
+          border: 'none',
+          fontWeight: 'bold',
+          cursor: 'pointer'
+        }}
+      >
+        🗑 Giải tán nhóm
+      </button>
+
+      <div style={{ marginTop: 12, textAlign: 'right' }}>
+        <button
+          onClick={() => setShowGroupModal(false)}
+          style={{
+            padding: '6px 12px',
+            borderRadius: 6,
+            border: '1px solid #ccc',
+            background: '#f5f5f5',
+            cursor: 'pointer'
+          }}
+        >
+          Đóng
+        </button>
+      </div>
+    </div>
+  </>
+)}
+
 
 
     

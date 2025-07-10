@@ -29,103 +29,88 @@ export default function FloatingChatIntern() {
   const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
-useEffect(() => {
-  if (!currentUserId) return;
 
-  // Join phòng cá nhân để nhận new_group_created
-  socket.emit('join_user_room', currentUserId);
+  // Mentioned notification
+  useEffect(() => {
+    const handleMention = (data: any) => {
+      console.log('Bạn được tag:', data);
+      alert(`📣 ${data.from.name} đã tag bạn trong nhóm! Nội dung: ${data.message}`);
+    };
 
-  // Fetch các nhóm hiện tại
-  api.get('/chat-groups/my').then(res => {
-    const myGroups = res.data || [];
-    setGroups(myGroups);
-    myGroups.forEach((group: any) => {
+    socket.on('mentioned_notification', handleMention);
+
+    return () => {
+      socket.off('mentioned_notification', handleMention);
+    };
+  }, []);
+
+  // Join user room + fetch groups + listen new group
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    socket.emit('join_user_room', currentUserId);
+
+    api.get('/chat-groups/my').then(res => {
+      const myGroups = res.data || [];
+      setGroups(myGroups);
+      myGroups.forEach((group: any) => {
+        socket.emit('join_group', group.id);
+      });
+    });
+
+    const handleNewGroup = (group: any) => {
+      console.log('📥 Nhận nhóm mới:', group);
+      setGroups(prev => {
+        if (prev.some(g => g.id === group.id)) return prev;
+        return [...prev, group];
+      });
       socket.emit('join_group', group.id);
-    });
-  });
+    };
 
-  // Lắng nghe tin nhắn
-  const handleMsg = (msg: any) => setMessages(prev => [...prev, msg]);
-  socket.on('receive_message', handleMsg);
-  socket.on('receive_group_message', handleMsg);
+    socket.on('new_group_created', handleNewGroup);
 
-  // Lắng nghe nhóm mới
-  const handleNewGroup = (group: any) => {
-    console.log('📥 Nhận nhóm mới:', group);
-    setGroups(prev => {
-      // tránh thêm trùng nếu FE reload trễ
-      if (prev.some(g => g.id === group.id)) return prev;
-      return [...prev, group];
-    });
-    socket.emit('join_group', group.id);
-  };
-  socket.on('new_group_created', handleNewGroup);
-
-  // Cleanup
-  return () => {
-    socket.off('receive_message', handleMsg);
-    socket.off('receive_group_message', handleMsg);
-    socket.off('new_group_created', handleNewGroup);
-  };
-}, [currentUserId]);
-useEffect(() => {
-  const handleGroupEdited = (updatedGroup: any) => {
-    setGroups(prev =>
-      prev.map(g => g.id === updatedGroup.id
-        ? { ...updatedGroup, memberNames: updatedGroup.members?.map((m: any) => m.name).join(', ') }
-        : g
-      )
-    );
-    if (selectedGroup?.id === updatedGroup.id) {
-      setSelectedGroup(updatedGroup);
-    }
-  };
-
-  socket.on('group_edited', handleGroupEdited);
-  return () => {
-    socket.off('group_edited', handleGroupEdited);
-  };
-}, [selectedGroup]);
-
-//   // Load danh sách nhóm
-//   useEffect(() => {
-//     api.get('/chat-groups/my').then(res => {
-//       setGroups(res.data || []);
-//       res.data.forEach((group: any) => {
-//         socket.emit('join_group', group.id);
-//       });
-//     });
-//   }, []);
-
-  // Lắng nghe tin nhắn socket
-//   useEffect(() => {
-//     const handler = (msg: any) => setMessages(prev => [...prev, msg]);
-//     socket.on('receive_message', handler);
-//     socket.on('receive_group_message', handler);
-//     return () => {
-//       socket.off('receive_message', handler);
-//       socket.off('receive_group_message', handler);
-//     };
-//   }, []);
-
-//   // Lắng nghe khi tham gia phòng chat
-// useEffect(() => {
-//   if (currentUserId) {
-//     socket.emit('join_user_room', currentUserId); 
-//   }
-
-//   api.get('/chat-groups/my').then(res => {
-//     setGroups(res.data || []);
-//     res.data.forEach((group: any) => {
-//       socket.emit('join_group', group.id);
-//     });
-//   });
-// }, [currentUserId]);
+    return () => {
+      socket.off('new_group_created', handleNewGroup);
+    };
+  }, [currentUserId]);
 
 
+  useEffect(() => {
+    const handleMsg = (msg: any) => {
+      setMessages(prev => [...prev, msg]);
+    };
 
+    socket.on('receive_message', handleMsg);
+    socket.on('receive_group_message', handleMsg);
 
-  // Auto scroll khi có tin nhắn
+    return () => {
+      socket.off('receive_message', handleMsg);
+      socket.off('receive_group_message', handleMsg);
+    };
+  }, []);
+
+  // Nhóm bị sửa
+  useEffect(() => {
+    const handleGroupEdited = (updatedGroup: any) => {
+      setGroups(prev =>
+        prev.map(g =>
+          g.id === updatedGroup.id
+            ? { ...updatedGroup, memberNames: updatedGroup.members?.map((m: any) => m.name).join(', ') }
+            : g
+        )
+      );
+      if (selectedGroup?.id === updatedGroup.id) {
+        setSelectedGroup(updatedGroup);
+      }
+    };
+
+    socket.on('group_edited', handleGroupEdited);
+    return () => {
+      socket.off('group_edited', handleGroupEdited);
+    };
+  }, [selectedGroup]);
+
+  // Auto scroll xuống cuối
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -238,7 +223,7 @@ useEffect(() => {
             )}
           </div>
 
-          {/* Nhập tin nhắn */}
+          {/* Input */}
           {(selectedGroup || selectedAssignment) && (
             <div style={{ padding: 10, borderTop: '1px solid #ccc' }}>
               <input

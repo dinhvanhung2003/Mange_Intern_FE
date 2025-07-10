@@ -62,47 +62,94 @@ export default function CreateGroupModal({
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          background: 'white',
-          padding: 20,
-          borderRadius: 10,
+          background: '#fff',
+          padding: 24,
+          borderRadius: 12,
           zIndex: 1001,
-          width: 300,
+          width: 360,
           maxHeight: '80vh',
           overflowY: 'auto',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
         }}
       >
-        <h3 style={{ marginBottom: 10 }}>Tạo nhóm mới</h3>
+        <h2 style={{
+          marginBottom: 16,
+          fontSize: 20,
+          fontWeight: 'bold',
+          textAlign: 'center',
+          color: '#333'
+        }}>
+          Tạo nhóm mới
+        </h2>
+
         <input
-          placeholder="Tên nhóm"
+          placeholder="Nhập tên nhóm..."
           value={newGroupName}
           onChange={e => setNewGroupName(e.target.value)}
-          style={{ width: '100%', marginBottom: 10, padding: 6 }}
+          style={{
+            width: '100%',
+            padding: '10px',
+            borderRadius: 8,
+            border: '1px solid #ccc',
+            marginBottom: 16,
+            fontSize: 14,
+          }}
         />
-        {assignments.map(a => (
-          <div key={a.internId}>
-            <label>
+
+        <div style={{ maxHeight: 200, overflowY: 'auto', marginBottom: 16 }}>
+          {assignments.map(a => (
+            <label key={a.internId} style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: 8,
+              fontSize: 14,
+              cursor: 'pointer'
+            }}>
               <input
                 type="checkbox"
                 value={a.internId}
                 onChange={e => {
                   const id = Number(e.target.value);
-                  if (e.target.checked)
-                    setSelectedInterns(prev => [...prev, id]);
-                  else
-                    setSelectedInterns(prev => prev.filter(i => i !== id));
+                  setSelectedInterns(prev =>
+                    e.target.checked
+                      ? [...prev, id]
+                      : prev.filter(i => i !== id)
+                  );
                 }}
+                style={{ marginRight: 8 }}
               />
               {a.internName}
             </label>
-          </div>
-        ))}
-        <div style={{
-          marginTop: 10,
-          display: 'flex',
-          justifyContent: 'space-between'
-        }}>
-          <button onClick={onClose}>Hủy</button>
-          <button onClick={handleCreate}>Tạo nhóm</button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid #ccc',
+              background: '#f5f5f5',
+              cursor: 'pointer',
+            }}
+          >
+            ❌ Hủy
+          </button>
+          <button
+            onClick={handleCreate}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#1976d2',
+              color: '#fff',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}
+          >
+            ➕ Tạo nhóm
+          </button>
         </div>
       </div>
     </>,

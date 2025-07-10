@@ -9,6 +9,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from '../../components/Toast';
 import { useDebounce } from 'use-debounce';
 import mammoth from "mammoth";
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import {useClickOutside} from '../../hooks/useCloseModal';
+
+
+
 export default function MentorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as 'interns' | 'tasks') || 'interns';
@@ -89,18 +95,57 @@ export default function MentorDashboard() {
   });
 
 
-  const { data: tasks = [], refetch: refetchTasks } = useQuery({
-    queryKey: ['mentorTasks', debouncedTaskSearch],
-    queryFn: async () => {
-      const res = await api.get('mentor/tasks', {
-        params: { title: debouncedTaskSearch },
-      });
-      console.log('response:', res.data.data);
-      return res.data.data;
-    },
-    enabled: tab === 'tasks',
-    staleTime: 5 * 60 * 1000,
-  });
+
+const modalRef = useRef<HTMLDivElement>(null);
+useClickOutside(modalRef, () => setOpenDialog(false));
+
+const taskDialogRef = useRef<HTMLDivElement>(null);
+useClickOutside(taskDialogRef, () => setOpenDialog(false));
+
+
+
+
+  const {
+  data: taskPages,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
+} = useInfiniteQuery({
+  queryKey: ['mentorTasks', debouncedTaskSearch],
+  queryFn: ({ pageParam = 1 }) =>
+    api
+      .get('mentor/tasks', {
+        params: { title: debouncedTaskSearch, page: pageParam, limit: 10 },
+      })
+      .then((res) => res.data),
+      initialPageParam: 1,
+  getNextPageParam: (lastPage, allPages) => {
+    const totalPages = Math.ceil(lastPage.total / 10);
+    const nextPage = allPages.length + 1;
+    return nextPage <= totalPages ? nextPage : undefined;
+  },
+  enabled: tab === 'tasks',
+  staleTime: 5 * 60 * 1000, 
+});
+const tasks = taskPages?.pages.flatMap(p => p.data) || [];
+const parentTaskRef = useRef<HTMLDivElement>(null);
+const taskVirtualizer = useVirtualizer({
+  count: tasks.length,
+  getScrollElement: () => parentTaskRef.current,
+  estimateSize: () => 60,
+  overscan: 5,
+});
+// useEffect(() => {
+//   const items = taskVirtualizer.getVirtualItems();
+//   if (
+//     hasNextPage &&
+//     !isFetchingNextPage &&
+//     items.length > 0 &&
+//     items[items.length - 1].index >= tasks.length - 1
+//   ) {
+//     fetchNextPage();
+//   }
+// }, [taskVirtualizer.getVirtualItems(), hasNextPage, isFetchingNextPage, tasks.length]);
 
   // const handlePreviewDocx = async (fileUrl: string) => {
   //   try {
@@ -129,6 +174,22 @@ export default function MentorDashboard() {
   //   }
   // };
 
+useEffect(() => {
+  const scrollEl = parentTaskRef.current;
+  if (!scrollEl) return;
+
+  const handleScroll = () => {
+    const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+
+    const reachedBottom = scrollTop + clientHeight >= scrollHeight - 50; // gần cuối 50px
+    if (reachedBottom && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  scrollEl.addEventListener('scroll', handleScroll);
+  return () => scrollEl.removeEventListener('scroll', handleScroll);
+}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
 
 
@@ -140,10 +201,26 @@ export default function MentorDashboard() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (mode === 'reuse') {
-      api.get('/mentor/tasks').then(res => setMyTasks(res.data));
-    }
-  }, [mode]);
+  if (mode === 'reuse') {
+    api
+      .get('/mentor/tasks', {
+        params: {
+          unassignedOnly: true, 
+          title: reuseSearch   
+        }
+      })
+      .then(res => {
+        const data = Array.isArray(res.data) ? res.data : res.data.data || [];
+        setMyTasks(data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch reuse tasks:", err);
+        setMyTasks([]);
+      });
+  }
+}, [mode, reuseSearch]);
+
+
 
   const handleCreateTask = async () => {
     if (!titleRef.current || !dateRef.current || !descEditorRef.current) return;
@@ -225,11 +302,14 @@ export default function MentorDashboard() {
     `${t.title} ${t.assignedTo?.name || ''}`.toLowerCase().includes(taskSearch.toLowerCase())
   );
 
-  const filteredMyTasks = myTasks.filter(
-    (task) =>
-      !task.assignedTo?.id &&
-      `${task.title} ${task.description}`.toLowerCase().includes(reuseSearch.toLowerCase())
-  );
+  const filteredMyTasks = Array.isArray(myTasks)
+  ? myTasks.filter(
+      (task) =>
+        (!task.assignedTo || !task.assignedTo.id) && 
+        `${task.title} ${task.description || ''}`.toLowerCase().includes(reuseSearch.toLowerCase())
+    )
+  : [];
+
   return (
     <div className="p-6">
       {/* Tabs */}
@@ -340,51 +420,67 @@ export default function MentorDashboard() {
             className="mb-4 border rounded px-3 py-2 w-full sm:w-64 outline-none"
           />
 
-          <table className="min-w-full border border-gray-200 divide-y divide-gray-200 shadow-sm rounded-md overflow-hidden mt-4">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase text-left">
-              <tr>
-                <th className="px-4 py-2">Tiêu đề</th>
-                <th className="px-4 py-2">Mô tả</th>
-                <th className="px-4 py-2">Người nhận</th>
-                <th className="px-4 py-2">Hạn</th>
-                <th className="px-4 py-2">Trạng thái</th>
-                <th className="px-4 py-2">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm text-gray-800 bg-white">
-              {tasks.map((task: any) => (
-                <tr key={task.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-medium whitespace-nowrap">{task.title}</td>
-                  <td className="px-4 py-2 text-sm">
-                    <button
-                      className="text-blue-600 hover:underline"
-                      onClick={() => {
-                        setDescContent(task.description);
-                        setDescDialogOpen(true);
-                      }}
-                    >
-                      Xem chi tiết
-                    </button>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    {task.assignedTo?.name || task.assignedTo?.email || 'Chưa giao'}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">{task.dueDate}</td>
-                  <td className="px-4 py-2 capitalize whitespace-nowrap">{task.status}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <button
-                      className="text-red-600 hover:underline text-sm"
-                      onClick={() => handleDeleteTask(task.id)}
-                    >
-                      Xoá
-                    </button>
-                  </td>
+          <div ref={parentTaskRef} className="overflow-auto h-[600px] border rounded">
+  <div className="grid grid-cols-6 bg-gray-100 text-xs font-medium text-gray-700 sticky top-0 z-10">
+    <div className="p-2">Tiêu đề</div>
+    <div className="p-2">Mô tả</div>
+    <div className="p-2">Người nhận</div>
+    <div className="p-2">Hạn</div>
+    <div className="p-2">Trạng thái</div>
+    <div className="p-2">Hành động</div>
+  </div>
 
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  <div style={{ height: `${taskVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+    {taskVirtualizer.getVirtualItems().map((virtualRow) => {
+      const task = tasks[virtualRow.index];
+      return (
+        <div
+          key={task.id}
+          className="grid grid-cols-6 text-sm items-center border-b bg-white hover:bg-gray-50"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            transform: `translateY(${virtualRow.start}px)`,
+            height: `${virtualRow.size}px`,
+          }}
+        >
+          <div className="p-2 font-medium">{task.title}</div>
+          <div className="p-2">
+            <button
+              className="text-blue-600 hover:underline text-sm"
+              onClick={() => {
+                setDescContent(task.description);
+                setDescDialogOpen(true);
+              }}
+            >
+              Xem chi tiết
+            </button>
+          </div>
+          <div className="p-2">{task.assignedTo?.name || task.assignedTo?.email || 'Chưa giao'}</div>
+          <div className="p-2">{task.dueDate}</div>
+          <div className="p-2 capitalize">{task.status}</div>
+          <div className="p-2">
+            <button
+              className="text-red-600 hover:underline text-sm"
+              onClick={() => handleDeleteTask(task.id)}
+            >
+              Xoá
+            </button>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
 
+{isFetchingNextPage && (
+  <div className="text-center text-blue-600 py-2">Đang tải thêm...</div>
+)}
+{/* {!hasNextPage && (
+  <div className="text-center text-gray-500 py-2 italic">Đã tải toàn bộ task.</div>
+)} */}
 
         </>
       )}
@@ -396,7 +492,7 @@ export default function MentorDashboard() {
       {/* Dialog */}
       {openDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md w-full max-w-xl shadow-lg">
+          <div ref={modalRef} className="bg-white p-6 rounded-md w-full max-w-xl shadow-lg">
 
             <h3 className="text-lg font-semibold mb-4">
               {selectedIntern ? `Giao task cho ${selectedIntern.name}` : 'Tạo task mới'}
@@ -499,7 +595,7 @@ export default function MentorDashboard() {
       )}
       {taskModalIntern && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
+          <div ref={modalRef}  className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
 
             {(() => {
               const internTasks = tasksByIntern[taskModalIntern.id] || [];
@@ -586,7 +682,7 @@ export default function MentorDashboard() {
                                 <button
                                   className="text-orange-600 hover:underline text-sm"
                                   onClick={async () => {
-                                    const note = prompt('Nhập lý do đánh lỗi (tuỳ chọn):') || ''; // 👈 thêm dòng này
+                                    const note = prompt('Nhập lý do đánh lỗi (tuỳ chọn):') || ''; 
                                     try {
                                       await api.patch(`/mentor/tasks/${task.id}/status`, {
                                         status: 'error',
@@ -598,7 +694,7 @@ export default function MentorDashboard() {
                                         try {
                                           await api.patch(`/mentor/tasks/${task.id}/status`, {
                                             status: 'assigned',
-                                            note: 'Reset sau khi đánh lỗi', // 👈 hoặc để rỗng
+                                            note: 'Reset sau khi đánh lỗi', // 
                                           });
                                           fetchTasksForIntern(taskModalIntern.id);
                                           queryClient.invalidateQueries({ queryKey: ['mentorTasks'] });
