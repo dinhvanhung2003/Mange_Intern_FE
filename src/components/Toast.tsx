@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ToastProps {
   message: string;
@@ -9,8 +9,8 @@ interface ToastProps {
 const Toast: React.FC<ToastProps> = ({ message, show, onClose }) => {
   return (
     <div
-      className={`fixed top-5 right-5 z-50 transition-all duration-300 transform ${
-        show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+      className={`fixed top-5 right-5 z-[9999] transition-all duration-300 transform ${
+        show ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
       }`}
     >
       <div className="bg-green-600 text-white px-4 py-2 rounded shadow-lg flex items-center space-x-4 min-w-[250px]">

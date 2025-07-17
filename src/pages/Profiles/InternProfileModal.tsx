@@ -1,6 +1,7 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import api from "../../utils/axios";
-import { Button } from "../../components/ui/button";
+
+import { Button } from "@/components/ui/button";
 interface InternProfile {
   name?: string;
   school?: string;

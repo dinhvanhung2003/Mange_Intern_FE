@@ -11,7 +11,8 @@ import InternProfileForm from "./pages/Profiles/InternProfileForm";
 import MyTask from "./pages/Interns/MyTask";
 import TaskList from "./pages/Tasks/TasksList";
 import ChatWrapper from "./pages/Chat/ChatWrapper";
-
+import InternTopicsTab from "./pages/Interns/InternTopicsTab";
+import { Button } from "./components/ui/button";
 import { useEffect } from "react";
 import { useAssignmentStore } from "./stores/useAssignmentStore";
 function App() {
@@ -43,7 +44,7 @@ function App() {
           <Route path="interns/profile" element={<InternProfileForm />} />
           <Route path="interns/my-tasks" element={<MyTask />} />
           <Route path="admin/tasks" element={<TaskList />} />
-         
+         <Route path="/dashboard/interns/topics" element={<InternTopicsTab />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

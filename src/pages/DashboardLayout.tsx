@@ -110,7 +110,7 @@ const fullPath = location.pathname + location.search;
           });
 
           await fetch('http://localhost:3001/notifications/save-subscription', {
-
+ 
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -161,9 +161,15 @@ const fullPath = location.pathname + location.search;
         setShake(true);
         setTimeout(() => setShake(false), 1000);
       });
-
+ socket.on("deadline_assigned", (data: any) => {
+      setUnreadTasks((prev) => prev + 1);
+      setTaskNotification(`Bạn có deadline mới trong topic "${data.topicTitle}"`);
+      setShake(true);
+      setTimeout(() => setShake(false), 1000);
+    });
       return () => {
         socket.off("task_assigned");
+         socket.off("deadline_assigned"); 
       };
     }
   }, [role]);
@@ -245,6 +251,8 @@ const fullPath = location.pathname + location.search;
               <>
                 <SidebarLink to="/dashboard/interns/profile" label="Intern Profile" icon={icon_dashboard} currentPath={location.pathname} />
                 <SidebarLink to="/dashboard/interns/my-tasks" label="My Tasks" icon={tasks} currentPath={location.pathname} />
+              <SidebarLink to="/dashboard/interns/topics" label="Đề tài" icon={tasks} currentPath={location.pathname} />
+
               </>
             )}
 

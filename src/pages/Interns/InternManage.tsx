@@ -12,6 +12,7 @@ import mammoth from "mammoth";
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {useClickOutside} from '../../hooks/useCloseModal';
+import InternTopicManager from './InternTopicManager';
 
 
 
@@ -43,6 +44,10 @@ const internTaskModalRef = useRef<HTMLDivElement>(null);
 const reportModalRef = useRef<HTMLDivElement>(null);
 const docxModalRef = useRef<HTMLDivElement>(null);
 const logModalRef = useRef<HTMLDivElement>(null);
+
+
+// topic 
+const [topicModalIntern, setTopicModalIntern] = useState<any | null>(null);
 
 
 useClickOutside(createTaskModalRef, () => setOpenDialog(false));
@@ -400,6 +405,13 @@ useEffect(() => {
                       >
                         Giao Task
                       </button>
+                      <button
+  className="text-purple-600 border border-gray-300 hover:bg-gray-100 px-3 py-1 rounded text-xs font-medium"
+  onClick={() => setTopicModalIntern(intern)}
+>
+  Xem Topic
+</button>
+
                       <button
                         className="text-gray-700 border border-gray-300 hover:bg-gray-100 px-3 py-1 rounded text-xs font-medium"
                         onClick={() => {
@@ -951,6 +963,13 @@ useEffect(() => {
       </div>
     </div>
   </div>
+)}
+{topicModalIntern && (
+  <InternTopicManager
+    intern={topicModalIntern}
+    open={!!topicModalIntern}
+    onClose={() => setTopicModalIntern(null)}
+  />
 )}
 
     </div>
