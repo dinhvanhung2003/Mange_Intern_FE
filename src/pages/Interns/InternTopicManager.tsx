@@ -217,6 +217,7 @@ useEffect(() => {
   if (!open) return null;
 
   return (
+    
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-md w-full max-w-3xl shadow-lg overflow-y-auto max-h-[90vh]">
         <div className="flex justify-between items-center mb-4">
@@ -272,7 +273,7 @@ useEffect(() => {
     setShowCreateDeadlineDialog(true);
   }}
 >
-  + Tạo Deadline
+   Tạo Deadline
 </DropdownMenuItem>
 
 
@@ -437,9 +438,15 @@ useEffect(() => {
     {dl.submissionText && <p><b>Nội dung:</b> {dl.submissionText}</p>}
     {dl.submissionFileUrl && (
       <p>
-        <a href={`/${dl.submissionFileUrl}`} target="_blank" className="text-blue-600 underline">
-          Xem file đã nộp
-        </a>
+       <a
+  href={`http://localhost:3000/${dl.submissionFileUrl}`}
+  download
+  target="_blank"
+  className="text-blue-600 underline"
+>
+  Xem file đã nộp
+</a>
+
       </p>
     )}
   </div>
@@ -455,7 +462,7 @@ useEffect(() => {
       {countdowns[dl.id]?.text}
     </p>
               {dl.fileUrl && (
-                <a href={`/${dl.fileUrl}`} target="_blank" className="text-blue-600 underline">
+                <a href={dl.fileUrl} target="_blank" className="text-blue-600 underline">
                   Xem file
                 </a>
               )}

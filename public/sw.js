@@ -17,7 +17,7 @@ self.addEventListener('push', function(event) {
   } catch (err) {
     console.error('[SW] Push parse error:', err);
   }
-
+  console.log('[SW] Push data:', data);
   const options = {
     body: data.body || 'Bạn có một nhiệm vụ mới!',
     icon: '/icons/task-icon.png',
