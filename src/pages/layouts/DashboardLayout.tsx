@@ -1,20 +1,20 @@
-import logo from "../assets/login_logo.png";
-import icon_dashboard from "../assets/icon_dashboard.png";
-import avatar from "../assets/avatar.png";
+import logo from "../../assets/login_logo.png";
+import icon_dashboard from "../../assets/icon_dashboard.png";
+import avatar from "../../assets/avatar.png";
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 // import FloatingChat from "./Chat/FloatingChat";
-import ChatWrapper from "./Chat/ChatWrapper";
+import ChatWrapper from "../chats/ChatWrapper";
 import Snackbar from "@mui/material/Snackbar";
-import api from "../utils/axios";
-import NotificationBell from "../components/Ring";
-import Submenu from "../components/SubMenu";
-import SidebarLink from "../components/SidebarLink";
-import users from "../assets/siderbars/users.png";
-import tasks from "../assets/siderbars/tasks.png"
-import { queryClient } from "../index";
-import { useAssignmentStore } from "../stores/useAssignmentStore";
+import api from "../../utils/axios";
+import NotificationBell from "../../components/Ring";
+import Submenu from "../../components/SubMenu";
+import SidebarLink from "../../components/SidebarLink";
+import users from "../../assets/siderbars/users.png";
+import tasks from "../../assets/siderbars/tasks.png"
+import { queryClient } from "../../index";
+import { useAssignmentStore } from "../../stores/useAssignmentStore";
 
 
 const socket = require("socket.io-client")("http://localhost:3000");
@@ -27,8 +27,8 @@ interface TokenPayload {
 }
 
 export default function DashboardLayout() {
-  const location = useLocation(); 
-const fullPath = location.pathname + location.search;
+  const location = useLocation();
+  const fullPath = location.pathname + location.search;
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [unreadTasks, setUnreadTasks] = useState(0);
@@ -75,7 +75,7 @@ const fullPath = location.pathname + location.search;
   useEffect(() => {
     setSubmenuOpen(false);
   }, [location.pathname]);
-
+  // service worker
   useEffect(() => {
     if (role === "intern" && 'serviceWorker' in navigator && 'PushManager' in window) {
       const registerServiceWorkerAndSubscribe = async () => {
@@ -109,8 +109,8 @@ const fullPath = location.pathname + location.search;
             ),
           });
 
-          await fetch('http://localhost:3001/notifications/save-subscription', {
- 
+          await fetch('http://localhost:3000/notifications/save-subscription', {
+
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ const fullPath = location.pathname + location.search;
       registerServiceWorkerAndSubscribe();
     }
   }, [role]);
-
+  // notification cho mentor
   useEffect(() => {
     if (role === "intern") {
       api.get("/interns/assignment").then((res) => {
@@ -161,15 +161,15 @@ const fullPath = location.pathname + location.search;
         setShake(true);
         setTimeout(() => setShake(false), 1000);
       });
- socket.on("deadline_assigned", (data: any) => {
-      setUnreadTasks((prev) => prev + 1);
-      setTaskNotification(`Bạn có deadline mới trong topic "${data.topicTitle}"`);
-      setShake(true);
-      setTimeout(() => setShake(false), 1000);
-    });
+      socket.on("deadline_assigned", (data: any) => {
+        setUnreadTasks((prev) => prev + 1);
+        setTaskNotification(`Bạn có deadline mới trong topic "${data.topicTitle}"`);
+        setShake(true);
+        setTimeout(() => setShake(false), 1000);
+      });
       return () => {
         socket.off("task_assigned");
-         socket.off("deadline_assigned"); 
+        socket.off("deadline_assigned");
       };
     }
   }, [role]);
@@ -233,7 +233,8 @@ const fullPath = location.pathname + location.search;
             <SidebarLink to="/dashboard" label="Dashboard" icon={icon_dashboard} currentPath={location.pathname} />
 
             {role === "admin" && (
-              <Submenu
+              <>
+                <Submenu
                 label="Admin Management"
                 icon={icon_dashboard}
                 routes={[
@@ -244,6 +245,10 @@ const fullPath = location.pathname + location.search;
                 setSubmenuOpen={setSubmenuOpen}
                 currentPath={location.pathname}
               />
+               <SidebarLink to="/dashboard/admin/document" label="Dashboard" icon={icon_dashboard} currentPath={location.pathname} />
+              
+              </>
+              
             )}
 
 
@@ -251,7 +256,7 @@ const fullPath = location.pathname + location.search;
               <>
                 <SidebarLink to="/dashboard/interns/profile" label="Intern Profile" icon={icon_dashboard} currentPath={location.pathname} />
                 <SidebarLink to="/dashboard/interns/my-tasks" label="My Tasks" icon={tasks} currentPath={location.pathname} />
-              <SidebarLink to="/dashboard/interns/topics" label="Đề tài" icon={tasks} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/interns/topics" label="Đề tài" icon={tasks} currentPath={location.pathname} />
 
               </>
             )}
@@ -259,17 +264,17 @@ const fullPath = location.pathname + location.search;
             {role === "mentor" && (
               <>
                 <Submenu
-  label="Intern Management"
-  icon={icon_dashboard}
-  routes={[
-    { label: "Quản lý Intern", to: "/dashboard/interns?tab=interns" },
-    { label: "Quản lý Task", to: "/dashboard/interns?tab=tasks" }
-  ]}
-  submenuOpen={submenuOpen}
-  setSubmenuOpen={setSubmenuOpen}
-  currentPath={fullPath}
-/>
-
+                  label="Intern Management"
+                  icon={icon_dashboard}
+                  routes={[
+                    { label: "Quản lý Intern", to: "/dashboard/interns?tab=interns" },
+                    { label: "Quản lý Task", to: "/dashboard/interns?tab=tasks" }
+                  ]}
+                  submenuOpen={submenuOpen}
+                  setSubmenuOpen={setSubmenuOpen}
+                  currentPath={fullPath}
+                />
+ <SidebarLink to="/dashboard/mentors/document" label="Document" icon={tasks} currentPath={location.pathname} />
 
 
                 {/* <SidebarLink

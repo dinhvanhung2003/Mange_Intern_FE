@@ -1,38 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Register from "./pages/Register";
-import api from './utils/axios';
-import { AuthProvider } from "./context/AuthProvider";
-import InternManage from "./pages/Interns/InternManage";
-import DashboardLayout from "./pages/DashboardLayout";
-import UserMange from "./pages/UsersMange/UserMange";
-import InternProfileForm from "./pages/Profiles/InternProfileForm";
-import MyTask from "./pages/Interns/MyTask";
-import TaskList from "./pages/Tasks/TasksList";
-import ChatWrapper from "./pages/Chat/ChatWrapper";
-import InternTopicsTab from "./pages/Interns/InternTopicsTab";
-import { Button } from "./components/ui/button";
-import { useEffect } from "react";
-import { useAssignmentStore } from "./stores/useAssignmentStore";
+import Login from "./pages/auth/Login";
+import Dashboard from "./pages/layouts/Dashboard";
+import Register from "./pages/auth/Register";
+import InternManage from "./pages/interns/InternManage";
+import DashboardLayout from "./pages/layouts/DashboardLayout";
+import UserMange from "./pages/admins/user-manages/UserMange";
+import InternProfileForm from "./pages/profiles/InternProfileForm";
+import MyTask from "./pages/interns/MyTask";
+import TaskList from "./pages/tasks/TasksList";
+import ChatWrapper from "./pages/chats/ChatWrapper";
+import InternTopicsTab from "./pages/interns/InternTopicsTab";
+import DocumentManager from "./pages/mentors/DocumentManager";
+import DocumentAdmin from "./pages/admins/AdminDocument";
 function App() {
-//   useEffect(() => {
-//   if ('serviceWorker' in navigator) {
-//     navigator.serviceWorker
-//       .register('/sw.js')
-//       .then((registration) => {
-//         console.log(' Service Worker registered:', registration);
-//       })
-//       .catch((error) => {
-//         console.error(' Service Worker registration failed:', error);
-//       });
-//   }
-// }, []);
-//  const { fetchAssignment } = useAssignmentStore();
 
-//   useEffect(() => {
-//     fetchAssignment(); 
-//   }, []);
   return (
     <BrowserRouter>
       <Routes>
@@ -45,6 +26,8 @@ function App() {
           <Route path="interns/my-tasks" element={<MyTask />} />
           <Route path="admin/tasks" element={<TaskList />} />
          <Route path="/dashboard/interns/topics" element={<InternTopicsTab />} />
+          <Route path="/dashboard/mentors/document" element={<DocumentManager />} />
+           <Route path="/dashboard/admin/document" element={<DocumentAdmin />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../../utils/axios";
 import Toast from "../../components/Toast";
+import { useTopics } from "@/hooks/topics/useTopics";
+import { useTasks } from "@/hooks/topics/useTasks";
+import { useCreateTopic } from "@/hooks/topics/useCreateTopics";
 import {
   Dialog,
   DialogTrigger,
@@ -46,8 +49,11 @@ interface Props {
 }
 
 export default function InternTopicManager({ intern, open, onClose }: Props) {
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // const [topics, setTopics] = useState<Topic[]>([]);
+  // const [tasks, setTasks] = useState<Task[]>([]);
+
+
+
   const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
 
   const [toastMessage, setToastMessage] = useState("");
@@ -68,6 +74,11 @@ const [showCreateDeadlineDialog, setShowCreateDeadlineDialog] = useState(false);
 const [currentDeadlineTopicId, setCurrentDeadlineTopicId] = useState<number | null>(null);
 
 
+const { data: topics = [], refetch: refetchTopics } = useTopics(intern.id, open);
+const { data: tasks = [], refetch: refetchTasks } = useTasks(intern.id, open);
+
+
+
 
   //xem deadline 
   const [deadlines, setDeadlines] = useState([]);
@@ -82,7 +93,7 @@ const fetchDeadlines = async (topicId: number) => {
     alert("Không thể tải deadline.");
   }
 };
-
+// bộ đếm ngược deadline
 const getCountdown = (deadline: string): { text: string; isLate: boolean } => {
   const target = new Date(deadline).getTime();
   const now = new Date().getTime();
@@ -125,51 +136,80 @@ useEffect(() => {
     setTimeout(() => setIsToastVisible(false), 3000);
   };
 
-  const fetchTopics = async () => {
-    try {
-      const res = await api.get(`/topics/by-intern/${intern.id}`);
-      setTopics(res.data);
-    } catch {
-      triggerToast("Không thể tải topic.");
-    }
-  };
+  // const fetchTopics = async () => {
+  //   try {
+  //     const res = await api.get(`/topics/by-intern/${intern.id}`);
+  //     setTopics(res.data);
+  //   } catch {
+  //     triggerToast("Không thể tải topic.");
+  //   }
+  // };
 
-  const fetchTasks = async () => {
-    try {
-      const res = await api.get(`/mentor/interns/${intern.id}/tasks`);
-      setTasks(res.data);
-    } catch {
-      triggerToast("Không thể tải task.");
-    }
-  };
+  // const fetchTasks = async () => {
+  //   try {
+  //     const res = await api.get(`/mentor/interns/${intern.id}/tasks`);
+  //     setTasks(res.data);
+  //   } catch {
+  //     triggerToast("Không thể tải task.");
+  //   }
+  // };
 
-  const handleCreateTopic = async () => {
-    const title = titleRef.current?.value;
-    const description = descRef.current?.value;
-    const dueDate = dateRef.current?.value;
+  // const handleCreateTopic = async () => {
+  //   const title = titleRef.current?.value;
+  //   const description = descRef.current?.value;
+  //   const dueDate = dateRef.current?.value;
 
-    if (!title || !dueDate) {
-      triggerToast("Vui lòng nhập tiêu đề và hạn.");
-      return;
-    }
+  //   if (!title || !dueDate) {
+  //     triggerToast("Vui lòng nhập tiêu đề và hạn.");
+  //     return;
+  //   }
 
-    try {
-      await api.post("/topics", {
-        title,
-        description,
-        dueDate,
-        assignedToId: intern.id,
-        createdById: 1, // TODO: lấy từ auth
-      });
-      triggerToast("Tạo topic thành công!");
-      titleRef.current!.value = "";
-      descRef.current!.value = "";
-      dateRef.current!.value = "";
-      fetchTopics();
-    } catch {
-      triggerToast("Tạo topic thất bại.");
-    }
-  };
+  //   try {
+  //     await api.post("/topics", {
+  //       title,
+  //       description,
+  //       dueDate,
+  //       assignedToId: intern.id,
+  //       createdById: 1, // TODO: lấy từ auth
+  //     });
+  //     triggerToast("Tạo topic thành công!");
+  //     titleRef.current!.value = "";
+  //     descRef.current!.value = "";
+  //     dateRef.current!.value = "";
+  //     fetchTopics();
+  //   } catch {
+  //     triggerToast("Tạo topic thất bại.");
+  //   }
+  // };
+ 
+  // thay doi co hook useCreateTopic
+  const createTopic = useCreateTopic();
+
+const handleCreateTopic = () => {
+  const title = titleRef.current?.value;
+  const description = descRef.current?.value;
+  const dueDate = dateRef.current?.value;
+
+  if (!title || !dueDate) {
+    triggerToast("Vui lòng nhập tiêu đề và hạn.");
+    return;
+  }
+
+  createTopic.mutate({
+    title,
+    description,
+    dueDate,
+    assignedToId: intern.id,
+  });
+
+  titleRef.current!.value = "";
+  descRef.current!.value = "";
+  dateRef.current!.value = "";
+  triggerToast("Tạo topic thành công!");
+};
+
+
+
 
   const toggleTask = (taskId: number) => {
     setSelectedTaskIds((prev) =>
@@ -189,7 +229,7 @@ useEffect(() => {
     triggerToast("Đã giao task vào topic!");
     setSelectedTaskIds([]);
     setSelectedTopicIdForAssign(null);
-    fetchTasks();
+    refetchTasks();
   } catch {
     triggerToast("Lỗi khi giao task.");
   }
@@ -207,12 +247,12 @@ useEffect(() => {
   };
   const [showTopicDialog, setShowTopicDialog] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      fetchTopics();
-      fetchTasks();
-    }
-  }, [open]);
+  // useEffect(() => {
+  //   if (open) {
+  //     fetchTopics();
+  //     fetchTasks();
+  //   }
+  // }, [open]);
 
   if (!open) return null;
 
@@ -246,7 +286,7 @@ useEffect(() => {
             </tr>
           </thead>
           <tbody>
-            {topics.map((topic) => (
+            {topics.map((topic:any) => (
               <tr key={topic.id}>
                 <td className="border p-2">{topic.title}</td>
                 <td className="border p-2">{topic.description || "-"}</td>
@@ -353,7 +393,7 @@ useEffect(() => {
     </DialogHeader>
 
     <div className="space-y-2 max-h-64 overflow-y-auto border p-2 rounded">
-      {tasks.map((task) => (
+      {tasks.map((task:any) => (
         <div key={task.id} className="flex items-center space-x-2">
           <Checkbox
             checked={selectedTaskIds.includes(task.id)}
@@ -377,7 +417,7 @@ useEffect(() => {
             triggerToast("Đã giao task!");
             setSelectedTaskIds([]);
             setShowAssignDialog(false);
-            fetchTasks();
+            refetchTopics();
           } catch {
             triggerToast("Giao task thất bại.");
           }

@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react';
-import { useInternTaskStore } from '../stores/useInternTaskStore';
-import { useAuth } from '../hooks/useAuth';
-import iconComplete from '../assets/status_task/complete.png';
-import iconAssigned from '../assets/status_task/assigned.png';
-import iconProgress from '../assets/status_task/progress.png';
-import iconHold from '../assets/status_task/hold.png';
+import { useInternTaskStore } from '../../stores/useInternTaskStore';
+import { useAuth } from '../../hooks/useAuth';
+import iconComplete from '../../assets/status_task/complete.png';
+import iconAssigned from '../../assets/status_task/assigned.png';
+import iconProgress from '../../assets/status_task/progress.png';
+import iconHold from '../../assets/status_task/hold.png';
 
 export default function InternDashboard() {
   const user = useAuth();

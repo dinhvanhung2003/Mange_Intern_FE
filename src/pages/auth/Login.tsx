@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import logo_login from '../assets/login_logo.png';
-import background_login from '../assets/background_login.png';
+import logo_login from '../../assets/login_logo.png';
+import background_login from '../../assets/background_login.png';
 import { useNavigate } from 'react-router-dom';
 import { FiRefreshCw } from 'react-icons/fi';
-import api from '../utils/axios';
+import api from '../../utils/axios';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

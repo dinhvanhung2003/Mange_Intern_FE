@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import background from '../assets/background_login.png';
+import background from '../../assets/background_login.png';
 import { useEffect } from 'react';
 export default function Register() {
   const [email, setEmail] = useState('');

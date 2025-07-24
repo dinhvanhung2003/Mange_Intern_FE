@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FiEdit, FiTrash } from 'react-icons/fi';
-import api from '../../utils/axios';
+import api from '../../../utils/axios';
 import UserForm from './UserForm';
 import type { UserType } from './UserForm';
 import Select from 'react-select';
@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
-import Toast from '../../components/Toast';
+import Toast from '../../../components/Toast';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback } from 'react';
 interface User {

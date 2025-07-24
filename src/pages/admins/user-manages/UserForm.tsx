@@ -1,6 +1,6 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { useClickOutside } from "../../hooks/useCloseModal";
+import { useClickOutside } from "../../../hooks/useCloseModal";
 import { useRef } from "react";
 export type UserType = "intern" | "mentor";
 
