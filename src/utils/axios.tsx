@@ -1,90 +1,62 @@
-// import axios from 'axios';
+import axios, {
+  AxiosInstance,
+  AxiosResponse,
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 
-// const api = axios.create({
-//   baseURL: 'http://localhost:3000',
-//   withCredentials: true,
-// });
+let isRefreshing = false;
+let refreshSubscribers: (() => void)[] = [];
 
-
-// api.interceptors.request.use(config => {
-//   const token = sessionStorage.getItem('accessToken');
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
-
-
-// api.interceptors.response.use(
-//   res => res,
-//   async err => {
-//     const originalRequest = err.config;
-
-//     if (err.response?.status === 401 && !originalRequest._retry) {
-//       originalRequest._retry = true;
-
-//       try {
-//         const res = await api.post('/auth/refresh');
-
-//         const newAccessToken = res.data.accessToken;
-//         sessionStorage.setItem('accessToken', newAccessToken);
-//         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-//         return api(originalRequest);
-//       } catch (refreshError) {
-
-//         sessionStorage.clear();
-//         window.location.href = '/login';
-//         return Promise.reject(refreshError);
-//       }
-//     }
-
-//     return Promise.reject(err);
-//   }
-// );
-
-
-
-// export default api;
-// utils/authApi.ts
-import axios from "axios";
-
-const authApi = axios.create({
+// --- Axios instance ---
+const authApi: AxiosInstance = axios.create({
   baseURL: "http://localhost:3000",
-  withCredentials: true, 
+  withCredentials: true, // gửi cookie (accessToken + refreshToken) mỗi request
 });
 
-// Gắn accessToken từ sessionStorage vào header Authorization
-authApi.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+// --- Helper: chờ refresh xong ---
+const subscribeTokenRefresh = (cb: () => void) => {
+  refreshSubscribers.push(cb);
+};
+
+const onRefreshed = () => {
+  refreshSubscribers.forEach((cb) => cb());
+  refreshSubscribers = [];
+};
+
+// --- Request interceptor ---
+// Không cần thêm Authorization header vì token đã nằm trong cookie
+authApi.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Tự động xử lý khi accessToken hết hạn
+// --- Response interceptor ---
 authApi.interceptors.response.use(
-  (res) => res,
-  async (err) => {
-    const originalRequest = err.config;
+  (res: AxiosResponse) => res,
+  async (err: AxiosError) => {
+    const originalRequest = err.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Nếu 401 và chưa thử lại lần nào
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          subscribeTokenRefresh(() => {
+            resolve(authApi(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
       try {
-        const res = await authApi.post("/auth/refresh");
-
-        const newAccessToken = res.data.accessToken;
-        sessionStorage.setItem("accessToken", newAccessToken);
-
-        // Gắn token mới vào request gốc và gửi lại
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        // Gọi refresh → BE set lại accessToken trong cookie
+        await authApi.post("/auth/refresh");
+        onRefreshed();
+        isRefreshing = false;
         return authApi(originalRequest);
       } catch (refreshError) {
-        sessionStorage.clear();
-        window.location.href = "/login"; // Điều hướng về trang login
+        isRefreshing = false;
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }

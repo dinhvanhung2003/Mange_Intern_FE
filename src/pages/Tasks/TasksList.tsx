@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import api from '../../utils/axios';
+import  authApi  from '../../utils/axios';
+import { Box, Typography, TextField, Paper, Table, TableHead, TableRow, TableCell, CircularProgress } from '@mui/material';
 interface User {
   id: number;
   name: string;
@@ -20,10 +20,8 @@ interface Task {
   assignedBy?: User;
 }
 
-const fetchTasks = async ({ pageParam = 1, keyword = '' }) => {
-  const token = sessionStorage.getItem('accessToken');
-  const res = await api.get('http://localhost:3000/admin/tasks', {
-    headers: { Authorization: `Bearer ${token}` },
+export const fetchTasks = async ({ pageParam = 1, keyword = "" }) => {
+  const res = await authApi.get("/admin/tasks", {
     params: { keyword, page: pageParam, limit: 10 },
   });
   return res.data;
@@ -77,37 +75,42 @@ useEffect(() => {
   console.log("Tasks loaded:", allTasks.length);
 }, [allTasks.length]);
 
+  
+           
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
+    <Box display="flex" flexDirection="column" height="100vh" bgcolor="#f5f5f5">
       {/* Header */}
-      <div className="flex-shrink-0 p-6 bg-white shadow">
-        <h2 className="text-xl font-semibold mb-4 text-[#243874]">
+      <Box p={3} bgcolor="white" boxShadow={1}>
+        <Typography variant="h6" gutterBottom color="primary">
           Tất cả task trong hệ thống
-        </h2>
-        <input
-          type="text"
+        </Typography>
+        <TextField
+          fullWidth
           placeholder="Tìm theo tiêu đề, Intern, Mentor, ID..."
-          className="w-full border border-gray-300 rounded px-4 py-2 outline-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          variant="outlined"
+          size="small"
         />
-      </div>
+      </Box>
 
       {/* Table */}
-      <div ref={parentRef} className="flex-1 overflow-y-auto">
-        {/* Header row */}
-        <div className="grid grid-cols-6 bg-gray-100 text-sm text-gray-600 border-b sticky top-0 z-10">
-          <div className="px-4 py-2">ID</div>
-          <div className="px-4 py-2">Tiêu đề</div>
-          <div className="px-4 py-2">Intern</div>
-          <div className="px-4 py-2">Mentor</div>
-          <div className="px-4 py-2">Trạng thái</div>
-          <div className="px-4 py-2">Hạn chót</div>
-        </div>
+      <Box flex={1} overflow="auto" ref={parentRef} component={Paper}>
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Tiêu đề</TableCell>
+              <TableCell>Intern</TableCell>
+              <TableCell>Mentor</TableCell>
+              <TableCell>Trạng thái</TableCell>
+              <TableCell>Hạn chót</TableCell>
+            </TableRow>
+          </TableHead>
+        </Table>
 
-        {/* Virtual rows */}
-        <div
-          style={{
+        <Box
+          sx={{
             height: `${rowVirtualizer.getTotalSize()}px`,
             position: 'relative',
           }}
@@ -115,48 +118,55 @@ useEffect(() => {
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const task = allTasks[virtualRow.index];
             return (
-              <div
+              <Box
                 key={task.id}
-                data-testid="task-row"
-                className="grid grid-cols-6 items-center border-b hover:bg-gray-50"
-                style={{
+                sx={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   width: '100%',
                   transform: `translateY(${virtualRow.start}px)`,
                   height: `${virtualRow.size}px`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #e0e0e0',
+                  bgcolor: 'white',
+                  '&:hover': { bgcolor: '#f9f9f9' },
                 }}
               >
-                <div className="px-4 py-2">{task.id}</div>
-                <div className="px-4 py-2">{task.title}</div>
-                <div className="px-4 py-2">
+                <Box flex={1} px={2}>{task.id}</Box>
+                <Box flex={2} px={2}>{task.title}</Box>
+                <Box flex={2} px={2}>
                   {task.assignedTo?.name || '---'} (# {task.assignedTo?.id || '-'})
-                </div>
-                <div className="px-4 py-2">
+                </Box>
+                <Box flex={2} px={2}>
                   {task.assignedBy?.name || '---'} (# {task.assignedBy?.id || '-'})
-                </div>
-                <div className="px-4 py-2 capitalize">{task.status}</div>
-                <div className="px-4 py-2">
+                </Box>
+                <Box flex={1} px={2} textTransform="capitalize">
+                  {task.status}
+                </Box>
+                <Box flex={1} px={2}>
                   {new Date(task.dueDate).toLocaleDateString()}
-                </div>
-              </div>
+                </Box>
+              </Box>
             );
           })}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Footer */}
-      <div className="flex-shrink-0 text-center py-2">
-        {isFetchingNextPage && (
-          <span className="text-blue-600">Đang tải thêm...</span>
-        )}
+      <Box textAlign="center" py={1} bgcolor="white" boxShadow={1}>
+        {isFetchingNextPage && <CircularProgress size={20} color="primary" />}
         {!hasNextPage && (
-          <span className="text-gray-500 italic">Đã tải toàn bộ task.</span>
+          <Typography variant="body2" color="textSecondary" fontStyle="italic">
+            Đã tải toàn bộ task.
+          </Typography>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
-};
+
+}
+
 
 export default TaskList;

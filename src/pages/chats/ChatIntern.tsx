@@ -1,23 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
-import { io } from 'socket.io-client';
 import api from '../../utils/axios';
 import { useAssignmentStore } from '../../stores/useAssignmentStore';
 import { socket } from '../../utils/socket';
 import EmojiPicker from 'emoji-picker-react';
-function getUserFromToken() {
-  const token = sessionStorage.getItem('accessToken');
-  if (!token) return null;
-  try {
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return null;
-  }
-}
+import { useAuth } from '../../hooks/useAuth';
 
 export default function FloatingChatIntern() {
-  const user = getUserFromToken();
+  
+  const user =useAuth()
   const { assignment } = useAssignmentStore();
-  const currentUserId = user?.sub;
+  const currentUserId = user?.id;
+
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'mentor' | 'group'>('group');

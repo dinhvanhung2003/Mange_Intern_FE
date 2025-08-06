@@ -48,3 +48,22 @@ self.addEventListener('notificationclick', function(event) {
     })
   );
 });
+
+if (event.data?.type === 'UNSUBSCRIBE_PUSH') {
+  console.log('[SW] Unsubscribing from push...');
+  const subscription = await self.registration.pushManager.getSubscription();
+  if (subscription) {
+    const success = await subscription.unsubscribe();
+    console.log('[SW] Unsubscribe result:', success);
+    if (success) {
+      console.log('[SW] Push subscription cancelled');
+      await fetch('/api/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+      });
+    }
+  }
+}
+
+

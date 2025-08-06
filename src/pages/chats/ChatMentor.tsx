@@ -1,12 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import api from '../../utils/axios';
+import authApi from '../../utils/axios';
 import avatar_chat from '../../assets/avatar_chat.png';
 import CreateGroupModal from '../../components/CreateGroupChat';
 import EmojiPicker from 'emoji-picker-react';
 import { socket } from '../../utils/socket';
-
-
+import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
   senderId: number;
@@ -20,15 +19,6 @@ interface Assignment {
   internName?: string;
 }
 
-function getUserFromToken() {
-  const token = sessionStorage.getItem('accessToken');
-  if (!token) return null;
-  try {
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return null;
-  }
-}
 
 const boxStyle = {
   padding: 8,
@@ -40,8 +30,8 @@ const boxStyle = {
 };
 
 export default function FloatingChatMentor() {
-  const user = getUserFromToken();
-  const currentUserId = user?.sub;
+  const user = useAuth();
+  const currentUserId = user?.id;
   const [open, setOpen] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -76,7 +66,7 @@ const inputRef = useRef<HTMLInputElement>(null);
 useEffect(() => {
   if (!user) return;
 
-  api.get('/chat-groups/created-by-me').then(res => {
+  authApi.get('/chat-groups/created-by-me').then(res => {
     console.log('Groups created by me:', res.data);
 
     const groupsWithNames = res.data.map((g: any) => ({
@@ -93,7 +83,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (!user) return;
-    api.get('/mentor/assignments').then(res => setAssignments(res.data || []));
+    authApi.get('/mentor/assignments').then(res => setAssignments(res.data || []));
   }, []);
 
 const socketListenerAdded = useRef(false);
@@ -149,7 +139,7 @@ useEffect(() => {
         setMessages([]);
       }
     });
-    console.log('selectedGroup:', selectedGroup);
+   
     return () => {
       socket.off('group_edited');
       socket.off('group_deleted');
@@ -221,7 +211,7 @@ const sendMessage = () => {
 const fetchMessagesForAssignment = async (assignmentId: number) => {
   setLoadingMessages(true);
   setMessages([]);
- const res = await api.get(`/messages/${assignmentId}`);
+ const res = await authApi.get(`/messages/${assignmentId}`);
 const newMessages = res.data || [];
 
 setMessages(prev => {
@@ -243,7 +233,7 @@ setMessages(prev => {
 const fetchMessagesForGroup = async (groupId: number) => {
   setLoadingMessages(true);
   setMessages([]);
-  const res = await api.get(`/messages/group/${groupId}`);
+  const res = await authApi.get(`/messages/group/${groupId}`);
 const newMessages = res.data || [];
 
 setMessages(prev => {
@@ -289,7 +279,7 @@ setMessages(prev => {
     setGroups(prev => [...prev, newGroup]);
     setSelectedGroup(newGroup);
     socket.emit('join_group', newGroup.id);
-    api.get(`/messages/group/${newGroup.id}`).then(res => setMessages(res.data));
+    authApi.get(`/messages/group/${newGroup.id}`).then(res => setMessages(res.data));
   }}
 />
  <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999 }}>
@@ -533,7 +523,7 @@ onChange={e => {
             {m.id !== currentUserId && (
               <button
                 onClick={async () => {
-                  await api.post(`/chat-groups/${selectedGroup.id}/remove-member`, { userId: m.id });
+                  await authApi.post(`/chat-groups/${selectedGroup.id}/remove-member`, { userId: m.id });
                   socket.emit('group_updated', selectedGroup.id);
                 }}
                 style={{
@@ -628,7 +618,7 @@ onChange={e => {
               <button
                 onClick={async () => {
                   if (!membersToAdd.length) return alert('Chọn ít nhất 1 intern');
-                  await api.post(`/chat-groups/${selectedGroup.id}/add-members`, { memberIds: membersToAdd });
+                  await authApi.post(`/chat-groups/${selectedGroup.id}/add-members`, { memberIds: membersToAdd });
                   socket.emit('group_edited', selectedGroup.id);
                   setShowAddMemberModal(false);
                   setMembersToAdd([]);
@@ -652,7 +642,7 @@ onChange={e => {
       <button
         onClick={async () => {
           if (!window.confirm('Bạn có chắc muốn giải tán nhóm?')) return;
-          await api.delete(`/chat-groups/${selectedGroup.id}`);
+          await authApi.delete(`/chat-groups/${selectedGroup.id}`);
           setSelectedGroup(null);
           setShowGroupModal(false);
           socket.emit('group_deleted', selectedGroup.id);

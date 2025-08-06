@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import api from "@/utils/axios";
-import { jwtDecode } from "jwt-decode";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +7,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import authApi from "../../utils/axios";
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Typography,
 
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CountdownTimer from "@/components/Topics/CountDownTimer";
 interface Task {
   id: number;
   title: string;
@@ -39,66 +46,46 @@ export default function InternTopicsTab() {
   const [deadlines, setDeadlines] = useState<Record<number, Deadline[]>>({});
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [countdowns, setCountdowns] = useState<Record<number, { text: string; isLate: boolean }>>({});
-  console.log("render")
-  useEffect(() => {
-    const token = sessionStorage.getItem("accessToken");
-    if (!token) return alert("Không tìm thấy token");
+useEffect(() => {
+  authApi.get("/auth/me")
+    .then(res => {
+      const internId = res.data?.id;
+      if (!internId) return alert("Không tìm thấy thông tin intern");
 
-    try {
-      const decoded = jwtDecode<JwtPayload>(token);
-      const internId = decoded.sub;
-      api.get(`/topics/by-intern/${internId}`)
-        .then(res => setTopics(res.data))
-        .catch(() => alert("Không thể tải đề tài"));
-    } catch {
-      alert("Token không hợp lệ");
-    }
-  }, []);
+      const fetchPersonal = authApi.get(`/topics/by-intern/${internId}`);
+      const fetchShared = authApi.get(`/topics/shared/interns/${internId}`);
 
- const getCountdown = (deadline: string) => {
-  const now = Date.now();
-  const target = new Date(deadline).getTime();
-  const diff = target - now;
+      Promise.all([fetchPersonal, fetchShared])
+        .then(([resPersonal, resShared]) => {
+          console.log("Personal topics:", resPersonal.data);
+          console.log("Shared topics:", resShared.data);
 
-  if (diff <= 0) return { text: "Trễ hạn", isLate: true };
+          const allTopics = [...resPersonal.data, ...resShared.data];
+          console.log("All topics merged:", allTopics);
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const minutes = Math.floor((diff / (1000 * 60)) % 60);
-  const seconds = Math.floor((diff / 1000) % 60);
-
-  return {
-    text: `${days}d ${hours}h ${minutes}m ${seconds}s`,
-    isLate: false,
-  };
-};
-
-  const renderCountdown = (dlId: number) => {
-    const countdown = countdowns[dlId];
-    if (!countdown) return null;
-    return (
-      <span className={countdown.isLate ? "text-red-600 font-bold" : "text-green-600 font-semibold"}>
-        {countdown.text}
-      </span>
-    );
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const updates: typeof countdowns = {};
-      Object.values(deadlines).forEach((dls) =>
-        dls.forEach(dl => {
-          updates[dl.id] = getCountdown(dl.deadline);
+          setTopics(allTopics);
         })
-      );
-      setCountdowns(updates);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [deadlines]);
+        .catch((err) => {
+          console.error("Error fetching topics:", err);
+          alert("Không thể tải đề tài");
+        });
+    })
+    .catch((err) => {
+      console.error("Error fetching user:", err);
+      alert("Không thể lấy thông tin người dùng");
+    });
+}, []);
+
+
+
+
+
+
+ 
 
   const openDeadlineDialog = async (topic: Topic) => {
     try {
-      const res = await api.get(`/topics/${topic.id}/deadlines`);
+      const res = await authApi.get(`/topics/${topic.id}/deadlines`);
       setDeadlines(prev => ({ ...prev, [topic.id]: res.data }));
       setSelectedTopic(topic);
     } catch {
@@ -110,11 +97,11 @@ export default function InternTopicsTab() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     try {
-      await api.post(`/topics/deadlines/${deadlineId}/submit`, formData, {
+      await authApi.post(`/topics/deadlines/${deadlineId}/submit`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       alert("Nộp bài thành công!");
-      const res = await api.get(`/topics/${topicId}/deadlines`);
+      const res = await authApi.get(`/topics/${topicId}/deadlines`);
       setDeadlines(prev => ({ ...prev, [topicId]: res.data }));
     } catch {
       alert("Lỗi khi nộp bài");
@@ -139,16 +126,32 @@ export default function InternTopicsTab() {
               </Button>
             </div>
 
-            {topic.tasks?.length ? (
-              <div className="mt-4 pl-4 border-l-2 border-gray-200">
-                <p className="text-sm font-semibold mb-1">Danh sách task:</p>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  {topic.tasks.map(task => <li key={task.id}>{task.title}</li>)}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-sm italic text-gray-500 mt-2">Chưa có task nào cho topic này.</p>
-            )}
+           {topic.tasks?.length ? (
+  <div className="mt-4">
+    <Accordion>
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+      >
+        <Typography variant="subtitle2" fontWeight="bold">
+          Danh sách task ({topic.tasks.length})
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+          {topic.tasks.map(task => (
+            <li key={task.id}>
+              {task.title}
+            </li>
+          ))}
+        </ul>
+      </AccordionDetails>
+    </Accordion>
+  </div>
+) : (
+  <p className="text-sm italic text-gray-500 mt-2">
+    Chưa có task nào cho topic này.
+  </p>
+)}
           </div>
         ))
       )}
@@ -172,7 +175,8 @@ export default function InternTopicsTab() {
                     </p>
                   )}
                   <p><b>Hạn:</b> {new Date(dl.deadline).toLocaleString()}</p>
-                  <p><b>Thời gian còn lại:</b> {renderCountdown(dl.id)}</p>
+                 <p><b>Thời gian còn lại:</b> <CountdownTimer deadline={dl.deadline} /></p>
+
 
                   {dl.submissionText || dl.submissionFileUrl ? (
                     <div className="mt-2 text-green-700 text-sm">

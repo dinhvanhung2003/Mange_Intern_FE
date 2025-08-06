@@ -1,18 +1,9 @@
 import FloatingChatMentor from './ChatMentor';
 import FloatingChatIntern from './ChatIntern';
-
-function getUserFromToken() {
-  const token = sessionStorage.getItem('accessToken');
-  if (!token) return null;
-  try {
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return null;
-  }
-}
+import { useAuth } from '../../hooks/useAuth';
 
 export default function FloatingChatWrapper() {
-  const user = getUserFromToken();
+  const user = useAuth();
 
   if (!user) return null;
 

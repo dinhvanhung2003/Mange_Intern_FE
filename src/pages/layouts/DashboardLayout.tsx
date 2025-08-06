@@ -3,20 +3,19 @@ import icon_dashboard from "../../assets/icon_dashboard.png";
 import avatar from "../../assets/avatar.png";
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-// import FloatingChat from "./Chat/FloatingChat";
+import authApi from "../../utils/axios";
 import ChatWrapper from "../chats/ChatWrapper";
 import Snackbar from "@mui/material/Snackbar";
 import api from "../../utils/axios";
 import NotificationBell from "../../components/Ring";
 import Submenu from "../../components/SubMenu";
 import SidebarLink from "../../components/SidebarLink";
-import users from "../../assets/siderbars/users.png";
 import tasks from "../../assets/siderbars/tasks.png"
 import { queryClient } from "../../index";
 import { useAssignmentStore } from "../../stores/useAssignmentStore";
-
-
+import { getRoleFromServer } from "../../utils/getRole";
+import { CircularProgress, Box } from "@mui/material";
+import {Alert} from "@mui/material";
 const socket = require("socket.io-client")("http://localhost:3000");
 
 interface TokenPayload {
@@ -35,43 +34,64 @@ export default function DashboardLayout() {
   const [taskNotification, setTaskNotification] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [savedNotifications, setSavedNotifications] = useState<any[]>([]);
-
-
   // fetch assigment 
   const { fetchAssignment } = useAssignmentStore();
-
-
-
-
   const navigate = useNavigate();
-
   const [submenuOpen, setSubmenuOpen] = useState(false);
-  const getRoleFromToken = (): string => {
-    const token = sessionStorage.getItem("accessToken");
-    if (!token) return "";
-    try {
-      const decoded = jwtDecode<TokenPayload>(token);
-      return decoded.type || "";
-    } catch (err) {
-      console.error("Token decode error:", err);
-      return "";
-    }
+  const [role, setRole] = useState<string>("");
+
+  // xử lý snack chung 
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error" | "info" | "warning">("success");
+
+  const showSnackbar = (message: string, severity: typeof snackbarSeverity = "success") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setOpenSnackbar(true);
   };
 
-  const role = getRoleFromToken();
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
+
+  // gửi token lên server để lấy role
   useEffect(() => {
-    if (role === 'intern') {
-      fetchAssignment();
-    }
-  }, [role]);
+    const fetchRole = async () => {
+      try {
+        const fetchedRole = await getRoleFromServer();
+        setRole(fetchedRole || "");
+      } catch (error) {
+        console.error("Lỗi khi lấy role:", error);
+      }
+    };
+    fetchRole();
+  }, []);
+
+  // const role = getRoleFromToken();
+  // check auth ở layout
   useEffect(() => {
-    const token = sessionStorage.getItem("accessToken");
-    if (!token) {
-      navigate("/login");
-    } else {
-      setLoading(false);
-    }
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/auth/check", {
+          method: "GET",
+          credentials: "include", // gửi cookie kèm request
+        });
+
+        if (res.ok) {
+          setLoading(false);
+        } else {
+          navigate("/login", { replace: true });
+        }
+      } catch (error) {
+        navigate("/login", { replace: true });
+      }
+    };
+
+    checkAuth();
   }, [navigate]);
+
   useEffect(() => {
     setSubmenuOpen(false);
   }, [location.pathname]);
@@ -110,12 +130,11 @@ export default function DashboardLayout() {
           });
 
           await fetch('http://localhost:3000/notifications/save-subscription', {
-
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${sessionStorage.getItem('accessToken')}`,
             },
+            credentials: 'include', // để gửi cookie
             body: JSON.stringify(subscription),
           });
 
@@ -180,17 +199,57 @@ export default function DashboardLayout() {
     return () => window.removeEventListener("reset-unread-tasks", handler);
   }, []);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    if (role === 'intern') {
+      fetchAssignment();
+    }
+  }, [role]);
+  // xử lý đăng xuất 
+const handleLogout = async () => {
+  try {
+    // Ngắt kết nối socket
     socket.disconnect();
-    sessionStorage.clear();
-    // delete cache
-    queryClient.clear()
-    // delete store 
+    queryClient.clear();
     useAssignmentStore.getState().clearAssignment();
-    navigate("/login");
-  };
 
-  if (loading) return <div>Loading...</div>;
+    // --- 1. Xóa push subscription ---
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      const endpoint = subscription.endpoint;
+
+      // Unsubscribe ở browser
+      registration.active?.postMessage({ type: 'UNSUBSCRIBE_PUSH' });
+
+      // Xóa ở DB trước khi mất quyền truy cập
+      try {
+        await api.delete('/notifications/remove-subscription', {
+          data: { endpoint }
+        });
+      } catch (err) {
+        console.error('Xóa subscription thất bại:', err);
+      }
+    }
+
+    // --- 2. Gọi API logout ---
+    await authApi.post('/auth/logout');
+
+    // --- 3. Chuyển hướng ---
+    navigate("/login");
+  } catch (error) {
+    console.error("Lỗi khi đăng xuất:", error);
+    navigate("/login");
+  }
+};
+
+
+  if (loading) {
+  return (
+    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <CircularProgress />
+    </Box>
+  );
+}
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -235,20 +294,20 @@ export default function DashboardLayout() {
             {role === "admin" && (
               <>
                 <Submenu
-                label="Admin Management"
-                icon={icon_dashboard}
-                routes={[
-                  { label: "User Management", to: "/dashboard/users" },
-                  { label: "Task Management", to: "/dashboard/admin/tasks" },
-                ]}
-                submenuOpen={submenuOpen}
-                setSubmenuOpen={setSubmenuOpen}
-                currentPath={location.pathname}
-              />
-               <SidebarLink to="/dashboard/admin/document" label="Dashboard" icon={icon_dashboard} currentPath={location.pathname} />
-              
+                  label="Admin Management"
+                  icon={icon_dashboard}
+                  routes={[
+                    { label: "User Management", to: "/dashboard/users" },
+                    { label: "Task Management", to: "/dashboard/admin/tasks" },
+                  ]}
+                  submenuOpen={submenuOpen}
+                  setSubmenuOpen={setSubmenuOpen}
+                  currentPath={location.pathname}
+                />
+                <SidebarLink to="/dashboard/admin/document" label="Dashboard" icon={icon_dashboard} currentPath={location.pathname} />
+
               </>
-              
+
             )}
 
 
@@ -256,7 +315,7 @@ export default function DashboardLayout() {
               <>
                 <SidebarLink to="/dashboard/interns/profile" label="Intern Profile" icon={icon_dashboard} currentPath={location.pathname} />
                 <SidebarLink to="/dashboard/interns/my-tasks" label="My Tasks" icon={tasks} currentPath={location.pathname} />
-                <SidebarLink to="/dashboard/interns/topics" label="Đề tài" icon={tasks} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/interns/topics" label="Topics" icon={tasks} currentPath={location.pathname} />
 
               </>
             )}
@@ -274,8 +333,8 @@ export default function DashboardLayout() {
                   setSubmenuOpen={setSubmenuOpen}
                   currentPath={fullPath}
                 />
- <SidebarLink to="/dashboard/mentors/document" label="Document" icon={tasks} currentPath={location.pathname} />
-
+                <SidebarLink to="/dashboard/mentors/document" label="Document" icon={tasks} currentPath={location.pathname} />
+                <SidebarLink to="/dashboard/mentors/documents" label="Topics" icon={tasks} currentPath={location.pathname} />
 
                 {/* <SidebarLink
                   to="/dashboard/interns"
@@ -304,7 +363,7 @@ export default function DashboardLayout() {
           className={`flex-1 p-6 overflow-y-auto bg-gray-100 transition-all duration-300 ${submenuOpen ? "pl-64" : ""
             }`}
         >
-          <Outlet />
+          <Outlet context={{ showSnackbar }} />
         </div>
 
 
@@ -325,27 +384,25 @@ export default function DashboardLayout() {
           notifications={savedNotifications}
         />
       )}
+       <Snackbar
+        open={openSnackbar}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ zIndex: 9999 }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
-
-
-// export function SidebarLink({ to, label, icon, currentPath }: { to: string, label: string, icon: string, currentPath: string }) {
-//   const isActive = currentPath === to;
-
-//   return (
-//     <Link
-//       to={to}
-//       className={`flex flex-col items-center justify-center px-4 py-5 rounded-xl transition hover:bg-gray-800 ${isActive ? 'bg-gray-800' : ''
-//         }`}
-//     >
-//       <img src={icon} alt={label} className="w-7 h-7 mb-2" />
-//       <span className={`text-base transition font-normal ${isActive ? 'font-semibold' : 'hover:font-semibold'}`}>
-//         {label}
-//       </span>
-//     </Link>
-//   );
-// }
 
 
 

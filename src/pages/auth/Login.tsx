@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import logo_login from '../../assets/login_logo.png';
 import background_login from '../../assets/background_login.png';
 import { useNavigate } from 'react-router-dom';
 import { FiRefreshCw } from 'react-icons/fi';
-import api from '../../utils/axios';
+import api from '@/utils/axios';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,7 +13,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [captchaText, setCaptchaText] = useState(generateCaptcha());
   const navigate = useNavigate();
-
   const handleLogin = async () => {
     setLoading(true);
     setError('');
@@ -53,12 +51,12 @@ const Login = () => {
       const res = await api.post(
         'http://localhost:3000/auth/login',
         { email, password, captcha },
-        { withCredentials: true }
+        { withCredentials: true },
+        
       );
       // const { accessToken, refreshToken } = res.data;
       // document.cookie = `accessToken=${accessToken}; path=/; max-age=900`; // 15 phút
       // document.cookie = `refreshToken=${refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 ngày
-      sessionStorage.setItem('accessToken', res.data.accessToken);
       navigate('/dashboard');
     } catch (err) {
       setError('Sai tài khoản, mật khẩu');
@@ -158,7 +156,7 @@ const Login = () => {
           disabled={loading}
           className="w-full bg-[#1D3C78] text-white py-2 rounded-sm hover:bg-[#102952] transition disabled:opacity-50"
         >
-          {loading ? 'Logging in...' : 'Log in'}
+          {loading ? 'Logging...' : 'Log in'}
         </button>
         <p className="text-sm text-center mt-4">
           Chưa có tài khoản?{' '}

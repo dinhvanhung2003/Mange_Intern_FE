@@ -2,16 +2,17 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/layouts/Dashboard";
 import Register from "./pages/auth/Register";
-import InternManage from "./pages/interns/InternManage";
+import InternManage from "./pages/mentors/intern-task/InternManage";
 import DashboardLayout from "./pages/layouts/DashboardLayout";
 import UserMange from "./pages/admins/user-manages/UserMange";
 import InternProfileForm from "./pages/profiles/InternProfileForm";
-import MyTask from "./pages/interns/MyTask";
+import MyTask from "./pages/interns/TaskIntern";
 import TaskList from "./pages/tasks/TasksList";
 import ChatWrapper from "./pages/chats/ChatWrapper";
 import InternTopicsTab from "./pages/interns/InternTopicsTab";
-import DocumentManager from "./pages/mentors/DocumentManager";
+import DocumentManager from "./pages/mentors/documents/DocumentManager";
 import DocumentAdmin from "./pages/admins/AdminDocument";
+import SharedTopicsTab from "./pages/mentors/topic/SharedTopicsTab";
 function App() {
 
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="admin/tasks" element={<TaskList />} />
          <Route path="/dashboard/interns/topics" element={<InternTopicsTab />} />
           <Route path="/dashboard/mentors/document" element={<DocumentManager />} />
+           <Route path="/dashboard/mentors/documents" element={<SharedTopicsTab />} />
            <Route path="/dashboard/admin/document" element={<DocumentAdmin />} />
         </Route>
         <Route path="/login" element={<Login />} />
