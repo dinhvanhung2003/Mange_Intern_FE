@@ -1,25 +1,20 @@
-// hooks/useAuth.ts
-import { useEffect, useState } from "react";
-import axios from "../utils/axios"; // file axios config mới với withCredentials: true
+
+import { useQuery } from "@tanstack/react-query";
+import axios from "../utils/axios";
 
 export function useAuth() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: user, isLoading, isError } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: async () => {
+      const res = await axios.get("/auth/me");
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000, // cache trong 5 phút
+    retry: false, // không tự retry nếu lỗi (ví dụ chưa đăng nhập)
+  });
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await axios.get("/auth/me"); // backend đọc cookie -> trả user
-        setUser(res.data);
-      } catch (err) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+  if (isLoading) return null;
+  if (isError) return null;
 
-    fetchUser();
-  }, []);
-
-  return loading ? null : user;
+  return user;
 }

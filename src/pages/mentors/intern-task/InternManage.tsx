@@ -30,8 +30,10 @@ import AssignInternDialog from './AssignInternDialog';
 import { Link } from 'react-router-dom';
 import MuiLink from '@mui/material/Link';
 import { useOutletContext } from 'react-router-dom';
-import {exportScoreReport} from '../../../hooks/ExportGradeTask';
+import { exportScoreReport } from '../../../hooks/ExportGradeTask';
 import { exportScoreReportExcel } from '../../../hooks/ExportGradeTaskExcel';
+import { exportAllTaskScoresExcel } from "../../../hooks/useExportTaskGrade";
+
 interface Task {
   id: number;
   title: string;
@@ -243,25 +245,23 @@ export default function MentorDashboard() {
     estimateSize: () => 60,
     overscan: 5,
   });
+useEffect(() => {
+  const [lastItem] = [...taskVirtualizer.getVirtualItems()].reverse();
+
+  if (!lastItem) return;
+
+  if (
+    lastItem.index >= tasks.length - 1 &&
+    hasNextPage &&
+    !isFetchingNextPage
+  ) {
+    fetchNextPage();
+  }
+}, [taskVirtualizer.getVirtualItems(), hasNextPage, isFetchingNextPage, fetchNextPage, tasks.length]);
 
 
 
-  useEffect(() => {
-    const scrollEl = parentTaskRef.current;
-    if (!scrollEl) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
-
-      const reachedBottom = scrollTop + clientHeight >= scrollHeight - 50; // gần cuối 50px
-      if (reachedBottom && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    };
-
-    scrollEl.addEventListener('scroll', handleScroll);
-    return () => scrollEl.removeEventListener('scroll', handleScroll);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+ 
 
 
 
@@ -486,6 +486,14 @@ export default function MentorDashboard() {
             }}
           >
             + Tạo Task
+          </Button>
+          <Button
+            variant="outlined"
+            color="success"
+            sx={{ mb: 2, ml: 2 }}
+            onClick={() => exportAllTaskScoresExcel(tasks)}
+          >
+            Xuất Excel tất cả task
           </Button>
 
           <TextField
@@ -780,7 +788,7 @@ export default function MentorDashboard() {
           <DialogTitle>
             Task của Intern: {taskModalIntern.name}
           </DialogTitle>
-          
+
           <DialogContent dividers sx={{ maxHeight: "80vh" }}>
             <TextField
               fullWidth
@@ -791,29 +799,29 @@ export default function MentorDashboard() {
               size="small"
               sx={{ mb: 2 }}
             />
-<Box display="flex" gap={2}>
-  <Button
-    variant="contained"
-    color="primary"
-    onClick={() => {
-      const internTasks = tasksByIntern[taskModalIntern.id] || [];
-      exportScoreReport(taskModalIntern.name, internTasks);
-    }}
-  >
-    Xuất PDF
-  </Button>
+            <Box display="flex" gap={2}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  const internTasks = tasksByIntern[taskModalIntern.id] || [];
+                  exportScoreReport(taskModalIntern.name, internTasks);
+                }}
+              >
+                Xuất PDF
+              </Button>
 
-  <Button
-    variant="outlined"
-    color="success"
-    onClick={() => {
-      const internTasks = tasksByIntern[taskModalIntern.id] || [];
-      exportScoreReportExcel(taskModalIntern.name, internTasks);
-    }}
-  >
-    Xuất Excel
-  </Button>
-</Box>
+              <Button
+                variant="outlined"
+                color="success"
+                onClick={() => {
+                  const internTasks = tasksByIntern[taskModalIntern.id] || [];
+                  exportScoreReportExcel(taskModalIntern.name, internTasks);
+                }}
+              >
+                Xuất Excel
+              </Button>
+            </Box>
 
             {(() => {
               const internTasks = tasksByIntern[taskModalIntern.id] || [];
