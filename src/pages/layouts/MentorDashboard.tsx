@@ -5,6 +5,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import api from "../../utils/axios";
+import {CartesianGrid} from "recharts";
 
 export default function MentorDashboard() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -145,41 +146,36 @@ export default function MentorDashboard() {
 
         {/* Pie + Rank */}
         <div className="bg-white rounded-xl p-4 shadow flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">Task theo Topic</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Xem rank topic:</span>
-              <select
-                className="border p-2 rounded"
-                value={selectedTopicId ?? ""}
-                onChange={(e) => setSelectedTopicId(Number(e.target.value))}
-              >
-                {topicTaskStats.map((t: any) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+            <div className="flex items-center justify-between mb-2">
+    <h2 className="text-lg font-semibold">Task theo Topic</h2>
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-500">Xem rank topic:</span>
+      <select
+        className="border p-2 rounded"
+        value={selectedTopicId ?? ""}
+        onChange={(e) => setSelectedTopicId(Number(e.target.value))}
+      >
+        {topicTaskStats.map((t: any) => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+    </div>
+  </div>
 
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={topicTaskStats}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                label={(e) => `${e.name} (${e.value}) task`}
-              >
-                {topicTaskStats.map((_: any, i: number) => (
-                  <Cell key={i} fill={`hsl(${(i * 60) % 360}, 70%, 60%)`} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+  <ResponsiveContainer width="100%" height={250}>
+    <BarChart
+      data={[...topicTaskStats].sort((a: any, b: any) => b.value - a.value)}
+      layout="vertical"
+      margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis type="number" />
+      <YAxis type="category" dataKey="name" width={120} />
+      <Tooltip formatter={(v: number) => [`${v} task`, 'Số task']} />
+      <Legend />
+      <Bar dataKey="value" name="Số task" fill="#3B82F6" />
+    </BarChart>
+  </ResponsiveContainer>
 
           <h3 className="text-md font-semibold mt-4 mb-2">Bảng xếp hạng</h3>
           {isLoadingRank ? (

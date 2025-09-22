@@ -33,6 +33,10 @@ import { useOutletContext } from 'react-router-dom';
 import { exportScoreReport } from '../../../hooks/ExportGradeTask';
 import { exportScoreReportExcel } from '../../../hooks/ExportGradeTaskExcel';
 import { exportAllTaskScoresExcel } from "../../../hooks/useExportTaskGrade";
+import {keepPreviousData } from '@tanstack/react-query';
+import {Skeleton} from '@mui/material';
+import {TablePagination} from '@mui/material';
+
 
 interface Task {
   id: number;
@@ -68,7 +72,6 @@ export default function MentorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as 'interns' | 'tasks') || 'interns';
   const [tab, setTab] = useState<'interns' | 'tasks'>(initialTab);
-  const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedIntern, setSelectedIntern] = useState<any | null>(null);
   const [tasksByIntern, setTasksByIntern] = useState<Record<number, any[]>>({});
@@ -102,8 +105,7 @@ export default function MentorDashboard() {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [docDialogOpen, setDocDialogOpen] = useState(false);
 
-  // const [search, setSearch] = useState('');
-  const [debouncedSearch] = useDebounce(search, 300);
+
 
   // Xem báo cáo của Intern 
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -184,18 +186,39 @@ export default function MentorDashboard() {
   const [docxDialogOpen, setDocxDialogOpen] = useState(false);
 
   //paging 
-  const [page, setPage] = useState(1);
-  const limit = 10; // số task trên mỗi trang
-  const { data: interns = [] } = useQuery({
-    queryKey: ['mentorInterns', debouncedSearch],
-    queryFn: () =>
-      api
-        .get('/mentor/interns', {
-          params: { search: debouncedSearch },
-        })
-        .then((res) => res.data),
-    staleTime: 5 * 60 * 1000,
-  });
+// xử lý dữ liệu của intern
+type Paginated<T> = { items: T[]; total: number; page: number; limit: number };
+type Intern = { id: number; name: string; email: string; school?: string | null };
+
+const [page, setPage] = useState(1);
+const [limit, setLimit] = useState(10);
+const [search, setSearch] = useState('');
+
+// Lấy giá trị debounce đúng cách
+const [debouncedSearch] = useDebounce(search, 300);
+const searchParam = debouncedSearch?.trim() ? debouncedSearch.trim() : undefined;
+
+const {
+  data,
+  isFetching,
+  isLoading: internsLoading,
+} = useQuery<Paginated<Intern>>({
+  queryKey: ['mentorInterns', page, limit, searchParam ?? ''],
+  queryFn: async () => {
+    const res = await api.get('/mentor/interns', {
+      params: { page, limit, search: searchParam },
+    });
+    return res.data as Paginated<Intern>;
+  },
+  placeholderData: keepPreviousData,
+  staleTime: 5 * 60 * 1000,
+});
+
+// truyền ra UI
+const interns = data?.items ?? [];
+const total = data?.total ?? 0;
+
+
 
 
 
@@ -358,7 +381,7 @@ useEffect(() => {
       ],
     });
   };
-
+  // lấy task của intern theo id
   const fetchTasksForIntern = async (internId: number) => {
     try {
       const res = await api.get(`/mentor/interns/${internId}/tasks`);
@@ -369,7 +392,7 @@ useEffect(() => {
   };
 
 
-  const filteredInterns = interns;
+
 
 
   const filteredMyTasks = Array.isArray(myTasks)
@@ -387,85 +410,126 @@ useEffect(() => {
     setGradeTask(task);
     setGradeScore(task.score || 0);
   };
+// chỉ skeleton khi lần đầu chưa có data
+const isInitialLoading = internsLoading && !data;
 
+// GIỮ data cũ khi đang refetch (isFetching)
+const rows: (Intern | null)[] = isInitialLoading
+  ? Array.from({ length: limit }, () => null)
+  : (data?.items ?? []);
 
   // render giao diện 
   return (
     <div className="p-6">
 
       {/* Interns View */}
-      {tab === 'interns' && (
-        <>
-          <Typography variant="h5" fontWeight={600} color="#243874" gutterBottom>
-            Danh sách Intern
-          </Typography>
+    {tab === 'interns' && (
+  <>
+    <Typography variant="h5" fontWeight={600} color="#243874" gutterBottom>
+      Danh sách Intern
+    </Typography>
 
-          <TextField
-            placeholder="Tìm kiếm intern"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            variant="outlined"
-            size="small"
-            sx={{ mb: 2, width: { xs: '100%', sm: '250px' } }}
-          />
+    <TextField
+      placeholder="Tìm kiếm intern"
+      value={search}
+      onChange={(e) => { setPage(1); setSearch(e.target.value); }} // reset về trang 1 khi search
+      variant="outlined"
+      size="small"
+      sx={{ mb: 2, width: { xs: '100%', sm: '250px' } }}
+    />
 
-          <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Tên</strong></TableCell>
-                  <TableCell><strong>Email</strong></TableCell>
-                  <TableCell><strong>Trường</strong></TableCell>
-                  <TableCell><strong>Hành động</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredInterns.map((intern: any) => (
-                  <TableRow key={intern.id} hover>
-                    <TableCell>{intern.name}</TableCell>
-                    <TableCell>{intern.email}</TableCell>
-                    <TableCell>{intern.school || 'Chưa có trường'}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        size="small"
-                        sx={{ mr: 1 }}
-                        onClick={() => {
-                          setSelectedIntern(intern);
-                          setOpenDialog(true);
-                          setMode('new');
-                        }}
-                      >
-                        Giao Task
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        size="small"
-                        sx={{ mr: 1 }}
-                        onClick={() => setTopicModalIntern(intern)}
-                      >
-                        Xem Topic
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => {
-                          setTaskModalIntern(intern);
-                          fetchTasksForIntern(intern.id);
-                        }}
-                      >
-                        Xem Task
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </>
-      )}
+    <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 2 }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Tên</strong></TableCell>
+            <TableCell><strong>Email</strong></TableCell>
+            <TableCell><strong>Trường</strong></TableCell>
+            <TableCell><strong>Hành động</strong></TableCell>
+          </TableRow>
+        </TableHead>
+
+     
+
+<TableBody>
+  {rows.map((intern, idx) => (
+    <TableRow key={intern ? intern.id : `skeleton-${idx}`} hover>
+      <TableCell>{intern ? intern.name : <Skeleton width={160} />}</TableCell>
+      <TableCell>{intern ? intern.email : <Skeleton width={220} />}</TableCell>
+      <TableCell>
+        {intern ? (intern.school || 'Chưa có trường') : <Skeleton width={140} />}
+      </TableCell>
+      <TableCell>
+        {intern ? (
+          <>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              sx={{ mr: 1 }}
+              onClick={() => { setSelectedIntern(intern); setOpenDialog(true); setMode('new'); }}
+            >
+              Giao Task
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              sx={{ mr: 1 }}
+              onClick={() => setTopicModalIntern(intern)}
+            >
+              Xem Topic
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => { setTaskModalIntern(intern); fetchTasksForIntern(intern.id); }}
+            >
+              Xem Task
+            </Button>
+          </>
+        ) : (
+          <Skeleton width={180} height={32} />
+        )}
+      </TableCell>
+    </TableRow>
+  ))}
+</TableBody>
+
+{/* Hiển thị trạng thái đang tải nền khi vẫn còn dữ liệu */}
+{isFetching && data && (
+  <Typography variant="body2" sx={{ mt: 1, opacity: 0.6 }}>
+    Đang tải trang {page}…
+  </Typography>
+)}
+
+      </Table>
+
+    <TablePagination
+  component="div"
+  count={total}
+  page={page - 1}
+  onPageChange={(_, newPage) => setPage(newPage + 1)}
+  rowsPerPage={limit}
+  onRowsPerPageChange={(e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setLimit(newLimit);
+    setPage(1);
+  }}
+  rowsPerPageOptions={[5, 10, 20, 50]}
+/>
+
+    </TableContainer>
+
+    {isFetching && !isLoading && (
+      <Typography variant="body2" sx={{ mt: 1, opacity: 0.6 }}>
+        Đang tải trang {page}…
+      </Typography>
+    )}
+  </>
+)}
+
+
 
 
       {/* Tasks View */}

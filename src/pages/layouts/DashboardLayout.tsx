@@ -4,7 +4,7 @@ import avatar from "../../assets/avatar.png";
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import authApi from "../../utils/axios";
-import ChatWrapper from "../chats/ChatWrapper";
+import Chat from "../chats/Chat";
 import Snackbar from "@mui/material/Snackbar";
 import api from "../../utils/axios";
 import NotificationBell from "../../components/Ring";
@@ -367,7 +367,7 @@ const handleLogout = async () => {
         </div>
 
 
-        {(role === "intern" || role === "mentor") && <ChatWrapper />}
+        {(role === "intern" || role === "mentor") && <Chat />}
         <Snackbar
           open={!!taskNotification}
           autoHideDuration={4000}

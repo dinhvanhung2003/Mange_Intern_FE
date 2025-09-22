@@ -36,7 +36,7 @@ import CreateDeadlineForm from './CreateDeadlineForm';
 interface Task {
   id: number;
   title: string;
-  intern?: { id: number; name: string };
+  assignedTo?: { id: number; name: string };
   deadline?: string;
   status?: string;
 }
@@ -151,7 +151,7 @@ export default function SharedTopicsTab() {
                         {topic.tasks.map((task) => (
                           <TableRow key={task.id}>
                             <TableCell>{task.title}</TableCell>
-                            <TableCell>{task.intern?.name || "—"}</TableCell>
+                           <TableCell>{task.assignedTo?.name ?? "—"}</TableCell>
                           
                             <TableCell>{task.status || "Chưa cập nhật"}</TableCell>
                             
