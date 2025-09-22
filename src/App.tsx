@@ -5,7 +5,7 @@ import Register from "./pages/auth/Register";
 import InternManage from "./pages/mentors/intern-task/InternManage";
 import DashboardLayout from "./pages/layouts/DashboardLayout";
 import UserMange from "./pages/admins/user-manages/UserMange";
-import InternProfileForm from "./pages/profiles/InternProfileForm";
+import InternProfileForm from '@/pages/profiles/InternProfileForm';
 import MyTask from "./pages/interns/TaskIntern";
 import TaskList from "./pages/tasks/TasksList";
 import ChatWrapper from "./pages/chats/ChatWrapper";
