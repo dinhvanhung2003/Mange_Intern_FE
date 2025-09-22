@@ -1,18 +1,18 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/auth/Login";
-import Dashboard from "./pages/layouts/Dashboard";
-import Register from "./pages/auth/Register";
-import InternManage from "./pages/mentors/intern-task/InternManage";
-import DashboardLayout from "./pages/layouts/DashboardLayout";
-import UserMange from "./pages/admins/user-manages/UserMange";
-import InternProfileForm from '@/pages/profiles/InternProfileForm';
-import MyTask from "./pages/interns/TaskIntern";
-import TaskList from "./pages/tasks/TasksList";
-import ChatWrapper from "./pages/chats/ChatWrapper";
-import InternTopicsTab from "./pages/interns/InternTopicsTab";
-import DocumentManager from "./pages/mentors/documents/DocumentManager";
-import DocumentAdmin from "./pages/admins/AdminDocument";
-import SharedTopicsTab from "./pages/mentors/topic/SharedTopicsTab";
+import Login from "pages/auth/Login";
+import Dashboard from "pages/layouts/Dashboard";
+import Register from "pages/auth/Register";
+import InternManage from "pages/mentors/intern-task/InternManage";
+import DashboardLayout from "pages/layouts/DashboardLayout";
+import UserMange from "pages/admins/user-manages/UserMange";
+import MyTask from "pages/interns/TaskIntern";
+import TaskList from "pages/tasks/TasksList";
+import ChatWrapper from "pages/chats/ChatWrapper";
+import InternTopicsTab from "pages/interns/InternTopicsTab";
+import DocumentManager from "pages/mentors/documents/DocumentManager";
+import DocumentAdmin from "pages/admins/AdminDocument";
+import SharedTopicsTab from "pages/mentors/topic/SharedTopicsTab";
+import InternProfileForm from "pages/profiles/InternProfileForm";
 function App() {
 
   return (
